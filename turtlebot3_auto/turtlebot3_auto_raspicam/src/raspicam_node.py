@@ -109,9 +109,9 @@ class RaspicamNode(object):
 	def cbSetCameraInfo(self, reqCameraInfo):
 		rospy.loginfo("[cbSrvSetCameraInfo] Callback!")
 		file_name = self.calibration_file_folder_path + "default.yaml"
-		resCameraInfo.success = self.saveCameraInfo(reqCameraInfo.camera_info, file_name)
-		response.status_message = "Write to %s" %file_name
-		return resCameraInfo
+		self.resCameraInfo.success = self.saveCameraInfo(reqCameraInfo.camera_info, file_name)
+		self.resCameraInfo.status_message = "Write to %s" %file_name
+		return self.resCameraInfo
 
 	def saveCameraInfo(self, msgCameraInfo, file_name):
 		# Convert camera_info_msg and save to a yaml file
