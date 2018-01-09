@@ -115,7 +115,7 @@ class RaspicamNode(object):
 
 	def saveCameraInfo(self, msgCameraInfo, file_name):
 		# Convert camera_info_msg and save to a yaml file
-		rospy.loginfo("[saveCameraInfo] filename: %s" %(filename))
+		rospy.loginfo("[saveCameraInfo] filename: %s" %(file_name))
 
 		calib = {'image_width': msgCameraInfo.width,
 			'image_height': msgCameraInfo.height,
