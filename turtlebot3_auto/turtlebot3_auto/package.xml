@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package>
+  <name>turtlebot3_auto</name>
+  <version>0.1.6</version>
+  <description>
+    ROS packages for the Turtlebot3 Auto (meta package)
+  </description>
+  <license>Apache License 2.0</license>
+  <author email="rwjung@robotis.com">Leon Jung</author>
+  <maintainer email="rwjung@robotis.com">Leon Jung</maintainer>
+<!--
+  <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3/issues</url>
+  <url type="repository">https://github.com/ROBOTIS-GIT/turtlebot3</url>
+  <url type="website">http://turtlebot3.robotis.com</url> -->
+  <buildtool_depend>catkin</buildtool_depend>
+  <run_depend>turtlebot3_auto_settings</run_depend>
+  <export><metapackage/></export>
+</package>

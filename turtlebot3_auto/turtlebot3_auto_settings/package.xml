@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+  <name>turtlebot3_auto_settings</name>
+  <version>0.0.1</version>
+  <description>
+    TurtleBot3 Auto settings
+  </description>
+  <author email="rwjung@robotis.com">Leon Jung</author>
+  <maintainer email="leon@robotis.com">Leon Jung</maintainer>
+  <license>BSD</license>
+<!--
+  <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3/issues</url>
+  <url type="repository">https://github.com/ROBOTIS-GIT/turtlebot3</url>
+  <url type="website">http://turtlebot3.robotis.com</url>
+-->
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>rospy</run_depend>
+</package>

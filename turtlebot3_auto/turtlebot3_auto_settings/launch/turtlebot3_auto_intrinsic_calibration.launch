@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="camera_calibration" type="cameracalibrator.py" name="intrinsic_calibrator" args="--size 7x5 --square 0.032 image:=/raspicam_node/image/compressed camera:=/raspicam_node/camera_info">
+  </node>
+</launch>
