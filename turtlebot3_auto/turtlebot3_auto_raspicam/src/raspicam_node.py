@@ -8,7 +8,7 @@ import io
 
 from picamera import PiCamera
 
-from sensor_msgs.msg import *
+from sensor_msgs.msg import CompressedImage
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
 
@@ -65,10 +65,10 @@ class RaspicamNode(object):
 
 	def captureImage(self):
 		rospy.loginfo("[%s] capturing image..." %(self.node_name))
-	        while not self.is_shutdown and not rospy.is_shutdown():
+		while not self.is_shutdown and not rospy.is_shutdown():
 			gen =  self.grabAndPublish(self.stream, self.pubImg)
 			try:
-				self.camera.capture_sequence(gen,'jpeg',use_video_port=True,splitter_port=0)
+				self.camera.capture_sequence(gen, 'jpeg', use_video_port=True, splitter_port=0)
 			except StopIteration:
 				pass
 			print "updating framerate"
