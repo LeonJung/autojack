@@ -26,9 +26,9 @@ class RaspicamNode(object):
 		self.frame_id = "/camera_optical_frame"
 
 		# Messages
-		self.msgCompressedImage = Image()
+		self.msgCompressedImage = CompressedImage()
 		
-		self.pubImg = rospy.Publisher("~image/compressed", Image, queue_size = 1)		
+		self.pubImg = rospy.Publisher("~image/compressed", CompressedImage, queue_size = 1)		
 
 		# Services
 		self.resCameraInfo = SetCameraInfoResponse()
@@ -61,7 +61,7 @@ class RaspicamNode(object):
 		value = rospy.get_param(param_name, default_value)
 		rospy.set_param(param_name, value)
 		rospy.loginfo("[%s] %s = %s" %(self.node_name, param_name, value))
-		return value;
+		return value
 
 	def captureImage(self):
 		rospy.loginfo("[%s] capturing image..." %(self.node_name))
@@ -73,7 +73,7 @@ class RaspicamNode(object):
 				pass
 			print "updating framerate"
 			self.camera.framerate = self.framerate
-			self.update_framerate=False
+			self.update_framerate = False
 
 		self.camera.close()
 		rospy.loginfo("[%s] Capture Ended." %(self.node_name))
@@ -86,6 +86,7 @@ class RaspicamNode(object):
 			stamp = rospy.Time.now()	
 			stream.seek(0)
 			stream_data = stream.getvalue()
+
 			# Generate compressed image
 			msgCompressedImage = CompressedImage()
 			msgCompressedImage.format = "jpeg"
@@ -108,13 +109,15 @@ class RaspicamNode(object):
 
 
 	def cbSetCameraInfo(self, reqCameraInfo):
+		rospy.loginfo("[cbSrvSetCameraInfo] Callback!")
 		file_name = self.calibration_file_folder_path + "intrinsic_calibration_param.yaml"
 		resCameraInfo.success = self.saveCameraInfo(reqCameraInfo.camera_info, file_name)
 		response.status_message = "Write to %s" %file_name
 		return resCameraInfo
 
 	def saveCameraInfo(self, msgCameraInfo, file_name):
-		
+		# Convert camera_info_msg and save to a yaml file
+		rospy.loginfo("[saveCameraInfo] filename: %s" %(filename))
 
 		calib = {'image_width': msgCameraInfo.width,
 			'image_height': msgCameraInfo.height,
@@ -126,6 +129,14 @@ class RaspicamNode(object):
 			'projection_matrix': {'data': msgCameraInfo.P, 'ros':3, 'cols':4}}
 
 		rospy.loginfo("[saveCameraInfo] calib %s" %(calib))
+
+
+		try:
+			f = open(filename, 'w')
+			yaml.safe_dump(calib, f)
+			return True
+		except IOError:
+			return False
 
 	def onShutdown(self):
 		rospy.loginfo("[%s] node terminated" %(self.node_name))
