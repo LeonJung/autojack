@@ -20,7 +20,7 @@ class RaspicamNode(object):
 		self.is_published = False
 
 		self.stream = io.BytesIO()
-		self.calibration_file_folder_path = "~/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_settings/calibrations/camera_intrinsic/"
+		self.calibration_file_folder_path = "/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_settings/calibrations/camera_intrinsic/"
 		self.frame_id = "/camera_optical_frame"
 
 		# Messages
