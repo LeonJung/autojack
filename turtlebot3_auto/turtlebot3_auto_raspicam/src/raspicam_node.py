@@ -20,7 +20,7 @@ class RaspicamNode(object):
 		self.is_published = False
 
 		self.stream = io.BytesIO()
-		self.calibration_file_folder_path = "catkin_ws/src/turtlebot3_auto_settings/calibrations/camera_intrinsic/"
+		self.calibration_file_folder_path = "catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_settings/calibrations/camera_intrinsic/"
 		self.frame_id = "/camera_optical_frame"
 
 		# Messages
@@ -108,7 +108,7 @@ class RaspicamNode(object):
 
 	def cbSetCameraInfo(self, reqCameraInfo):
 		rospy.loginfo("[cbSrvSetCameraInfo] Callback!")
-		file_name = self.calibration_file_folder_path + "intrinsic_calibration_param.yaml"
+		file_name = self.calibration_file_folder_path + "default.yaml"
 		resCameraInfo.success = self.saveCameraInfo(reqCameraInfo.camera_info, file_name)
 		response.status_message = "Write to %s" %file_name
 		return resCameraInfo
@@ -130,7 +130,7 @@ class RaspicamNode(object):
 
 
 		try:
-			f = open(filename, 'w')
+			f = open(file_name, 'w')
 			yaml.safe_dump(calib, f)
 			return True
 		except IOError:
