@@ -1,0 +1,7 @@
+<launch>
+    <!-- decoder_node -->
+    <remap from="decoder_node/compressed_image" to="raspicam_node/image/compressed"/>
+    <remap from="decoder_node/image/raw" to="raspicam_node/image/raw"/>
+    <node pkg="turtlebot3_auto_settings" type="decoder_node.py" name="decoder_node" output="screen" clear_params="true" required="true">
+    </node>
+</launch>

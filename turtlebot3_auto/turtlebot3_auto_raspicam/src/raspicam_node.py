@@ -11,8 +11,6 @@ from picamera import PiCamera
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
-
-
 class RaspicamNode(object):
 	def __init__(self):
 		self.node_name = rospy.get_name()
