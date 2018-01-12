@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(turtlebot3_auto_raspicam)
+project(turtlebot3_auto_camera)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp

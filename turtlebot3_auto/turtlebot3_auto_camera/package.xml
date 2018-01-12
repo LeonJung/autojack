@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>turtlebot3_auto_raspicam</name>
+  <name>turtlebot3_auto_camera</name>
   <version>0.0.1</version>
-  <description> package of pi camera for turtlebot3 auto</description>
+  <description> the package that controls camera on turtlebot3 auto</description>
 
   <maintainer email="rwjung@robotis.com">Leon Jung</maintainer>
 

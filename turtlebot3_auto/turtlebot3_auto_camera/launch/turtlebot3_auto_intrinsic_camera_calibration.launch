@@ -1,0 +1,5 @@
+<launch>
+  <!-- image transport from compressed to raw -->
+  <node pkg="image_transport" type="republish" name="republish" args="compressed in:=camera/image raw out:=camera/image" output="screen" />
+
+</launch>
