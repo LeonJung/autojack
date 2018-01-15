@@ -1,4 +1,7 @@
 <launch>
+  <!-- run pi camera -->
+  <include file="$(find turtlebot3_auto_camera)/launch/turtlebot3_auto_camera_pi.launch" />
+  
   <!-- image transport from compressed to raw -->
   <node pkg="image_transport" type="republish" name="republish" args="compressed in:=camera/image raw out:=camera/image" />
 

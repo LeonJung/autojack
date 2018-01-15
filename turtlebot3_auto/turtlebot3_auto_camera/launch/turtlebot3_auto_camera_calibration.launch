@@ -1,0 +1,12 @@
+<launch>
+  <!-- launch turtlebot3_auto_camera_pi.launch in the raspberry pi -->
+
+  <!-- image transport from compressed to raw -->
+  <node pkg="image_transport" type="republish" name="republish" args="compressed in:=camera/image raw out:=camera/image" />
+
+  <!-- image rectification -->
+  <!-- never mind of XML error -->
+  <node ns="camera" pkg="image_proc" type="image_proc" name="image_proc" output="screen">
+    <remap from="image_raw" to="image" />
+  </node>
+</launch>
