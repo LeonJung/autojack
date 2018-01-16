@@ -2,14 +2,11 @@
 import rospy
 import cv2
 import numpy as np
-from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage
 
 import matplotlib.pyplot as plt
-import utils
-
 
 def callback(x):    
     pass
