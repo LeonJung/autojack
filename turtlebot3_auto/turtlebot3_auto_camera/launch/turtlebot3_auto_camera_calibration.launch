@@ -8,5 +8,7 @@
   <!-- never mind of XML error -->
   <node ns="camera" pkg="image_proc" type="image_proc" name="image_proc" output="screen">
     <remap from="image_raw" to="image" />
+    <!-- testing queue_size : wiki says, if the image has long way to go elsewhere, this value should be increased -->
+    <param name="queue_size" value="2"/>
   </node>
 </launch>

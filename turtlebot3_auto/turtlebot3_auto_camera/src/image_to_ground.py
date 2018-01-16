@@ -2,12 +2,16 @@
 import rospy
 import cv2
 import numpy as np
+from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage
 
+import matplotlib.pyplot as plt
+import utils
 
-def callback(x):
+
+def callback(x):    
     pass
 
 class ImageTransform():
@@ -29,9 +33,9 @@ class ImageTransform():
         # pub4 : Bird's eye view image as raw image
         # if you do not want to publish some topic, delete pub definition in __init__ function and publishing process in callback function
         self._pub1 = rospy.Publisher('/image_calibrated_compressed', CompressedImage, queue_size=1)
-        self._pub2 = rospy.Publisher('/image_birdeye_compressed', CompressedImage, queue_size=1)
+        self._pub2 = rospy.Publisher('/image_birdseye_compressed', CompressedImage, queue_size=1)
         self._pub3 = rospy.Publisher('/image_calibrated', Image, queue_size=1)
-        self._pub4 = rospy.Publisher('/image_birdeye', Image, queue_size=1)
+        self._pub4 = rospy.Publisher('/image_birdseye', Image, queue_size=1)
 
         self.bridge = CvBridge()
 
@@ -122,11 +126,34 @@ class ImageTransform():
         # homography process
         cv_Homography = cv2.warpPerspective(cv_origin, h, (1000, 600))
         # fill the empty space with black triangles
-        # triangle1 = np.array([ [0,599], [0,340], [200,599] ], np.int32)
-        # triangle2 = np.array([ [999,599], [999,340], [799,599] ], np.int32)
-        # black = (0,0,0)
-        # white = (255,255,255)
-        # cv_Homography = cv2.fillPoly(cv_Homography, [triangle1, triangle2], black)
+        triangle1 = np.array([ [0,599], [0,340], [200,599] ], np.int32)
+        triangle2 = np.array([ [999,599], [999,340], [799,599] ], np.int32)
+        black = (0,0,0)
+        white = (255,255,255)
+        cv_Homography = cv2.fillPoly(cv_Homography, [triangle1, triangle2], black)
+
+
+
+
+        # Convert BGR to HSV
+        hsv = cv2.cvtColor(cv_Homography, cv2.COLOR_BGR2HSV)
+
+        # define range of yellow color in HSV
+        # lower_yellow = np.array([30,100,100])
+        # upper_yellow = np.array([95,255,255])
+        lower_yellow = np.array([30,80,80])
+        upper_yellow = np.array([115,255,255])
+
+
+        # Threshold the HSV image to get only yellow colors
+        mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+
+        # Bitwise-AND mask and original image
+        res = cv2.bitwise_and(cv_Homography,cv_Homography, mask = mask)
+
+        # cv2.imshow('frame',cv_Homography)
+        # cv2.imshow('mask',mask)
+        # cv2.imshow('res',res)
 
 
 
@@ -153,14 +180,66 @@ class ImageTransform():
         # cv_Homography = cv2.cvtColor(limg, cv2.COLOR_LAB2BGR)
         # # cv2.imshow('final', final)
 
-        # converting to binary image
-        cv_Homography = cv2.cvtColor(cv_Homography, cv2.COLOR_RGB2GRAY)
-        ret, cv_Homography = cv2.threshold(cv_Homography, binary_threshold, 255, cv2.THRESH_BINARY)
+        # pct = 0.25
+        # newsize = (int(cv_image.shape[0] * pct), int(cv_image.shape[1] * pct))
+        # small_img = cv2.resize(cv_image, newsize)  
+
+        # image = cv2.cvtColor(small_img, cv2.COLOR_BGR2RGB)
+
+        # homo_1 = image.reshape((image.shape[0] * image.shape[1], 3))
+        # clt = KMeans(n_clusters = 4)
+        # clt.fit(homo_1)
+
+
+        # # build a histogram of clusters and then create a figure
+        # # representing the number of pixels labeled to each color
+        # hist = utils.centroid_histogram(clt)
+        # bar = utils.plot_colors(hist, clt.cluster_centers_)
+        
+        # # show our color bart
+        # plt.figure()
+        # plt.axis("off")
+        # plt.imshow(bar)
+        # plt.show()
+
+#### this resizes the picture
+        # pct = 0.50
+        # newsize = (int(cv_Homography.shape[1] * pct), int(cv_Homography.shape[0] * pct))
+        # cv_Homography = cv2.resize(cv_Homography, newsize)  
+
+        # # img = cv2.imread('home.jpg')
+        # Z = cv_Homography.reshape((-1,3))
+        # # convert to np.float32
+        # Z = np.float32(Z)
+        # # define criteria, number of clusters(K) and apply kmeans()
+        # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+        # K = 4
+        # ret,label,center=cv2.kmeans(Z,K,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
+        # # Now convert back into uint8, and make original cv_image
+        # center = np.uint8(center)
+        # res = center[label.flatten()]
+        # res2 = res.reshape((cv_Homography.shape))
+        # # res2 = res.reshape((cv_image.shape))
+        # # cv2.imshow('res2',res2)
+
+#### converting to binary image
+        # cv_Homography = cv2.cvtColor(cv_Homography, cv2.COLOR_RGB2GRAY)
+        # ret, cv_Homography = cv2.threshold(cv_Homography, binary_threshold, 255, cv2.THRESH_BINARY)
+
+        cv2.namedWindow('cv_image', cv2.WINDOW_AUTOSIZE)
+        cv2.moveWindow('cv_image', 0, 250)
+        cv2.namedWindow('Homography', cv2.WINDOW_AUTOSIZE)
+        cv2.moveWindow('Homography', 500, 250)
+        # cv2.namedWindow('res2', cv2.WINDOW_AUTOSIZE)
+        # cv2.moveWindow('res2', 1000, 250)
 
         # showing calibrated iamge and Bird's eye view image
         if self.showing_images == "on":
             cv2.imshow('cv_image', cv_image), cv2.waitKey(1)
             cv2.imshow('Homography', cv_Homography), cv2.waitKey(1)
+
+            # cv2.imshow('res2',res2), cv2.waitKey(1)
+            # cv2.imshow('Downsampling', small_img), cv2.waitKey(1)
 
         # publishing calbrated and Bird's eye view as compressed image
         if self.selecting_pub_image == "compressed":
@@ -179,8 +258,8 @@ class ImageTransform():
         # publishing calbrated and Bird's eye view as raw image
         elif self.selecting_pub_image == "raw":
             self._pub3.publish(self.bridge.cv2_to_imgmsg(cv_origin, "bgr8"))
-            # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
-            self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
+            self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
+            # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
 
 
     def main(self):
