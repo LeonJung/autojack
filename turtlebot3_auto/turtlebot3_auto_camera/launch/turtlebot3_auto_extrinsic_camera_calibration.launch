@@ -1,3 +1,4 @@
 <launch>
-
-<launch/>
+  <!-- image to ground -->
+  <node pkg="turtlebot3_auto_camera" type="image_to_ground.py" name="image_to_ground" output="screen" />
+</launch>
