@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+#Special thanks to KiHoon Kim
+
 import rospy
 import cv2
 import numpy as np
@@ -16,7 +19,7 @@ class ImageToGround():
         self.trackbar = "on" # you can choose showing trackbar or not by "on", "off"
         self.showing_images = "on" # you can choose showing images or not by "on", "off"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
-        self.selecting_pub_image = "raw" # you can choose image type "compressed", "raw"
+        self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
         if self.selecting_sub_image == "compressed":
             self._sub = rospy.Subscriber('/camera/image_rect_color/compressed', CompressedImage, self.callback, queue_size=1)
@@ -29,30 +32,32 @@ class ImageToGround():
         # pub3 : calibrated image as raw image
         # pub4 : Bird's eye view image as raw image
         # if you do not want to publish some topic, delete pub definition in __init__ function and publishing process in callback function
-        self._pub1 = rospy.Publisher('/image_calibrated_compressed', CompressedImage, queue_size=1)
-        self._pub2 = rospy.Publisher('/image_birdseye_compressed', CompressedImage, queue_size=1)
-        self._pub3 = rospy.Publisher('/image_calibrated', Image, queue_size=1)
-        self._pub4 = rospy.Publisher('/image_birdseye', Image, queue_size=1)
+        if self.selecting_pub_image == "compressed":
+            self._pub1 = rospy.Publisher('/image_calibrated_compressed', CompressedImage, queue_size=1)
+            self._pub2 = rospy.Publisher('/image_birdseye_compressed', CompressedImage, queue_size=1)
+        elif self.selecting_pub_image == "raw":
+            self._pub3 = rospy.Publisher('/image_calibrated', Image, queue_size=1)
+            self._pub4 = rospy.Publisher('/image_birdseye', Image, queue_size=1)
 
-        self.bridge = CvBridge()
+        self.cvBridge = CvBridge()
 
         self.counter = 0
 
     def callback(self, image_msg):
         # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
-        self.counter += 1
-        if self.counter%3 != 0:
-            return
+        # self.counter += 1
+        # if self.counter % 3 != 0:
+        #     return
 
         if self.selecting_sub_image == "compressed":
             #converting compressed image to opencv image
             np_arr = np.fromstring(image_msg.data, np.uint8)
             cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         elif self.selecting_sub_image == "raw":
-            cv_image = self._cv_bridge.imgmsg_to_cv2(image_msg, "bgr8")
+            cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
         # adding Gaussian blur
-        # cv_image = cv2.GaussianBlur(cv_image,(5,5),0)
+        cv_image = cv2.GaussianBlur(cv_image, (5, 5), 0)
 
         # copy original image to use in homography process
         cv_origin = np.copy(cv_image)
@@ -137,7 +142,7 @@ class ImageToGround():
             msg_calibration = CompressedImage()
             msg_calibration.header.stamp = rospy.Time.now()
             msg_calibration.format = "jpeg"
-            msg_calibration.data = np.array(cv2.imencode('.jpg', cv_origin)[1]).tostring()
+            msg_calibration.data = np.array(cv2.imencode('.jpg', cv_image)[1]).tostring()
             self._pub1.publish(msg_calibration)
 
             msg_homography = CompressedImage()
@@ -148,10 +153,9 @@ class ImageToGround():
 
         # publishing calbrated and Bird's eye view as raw image
         elif self.selecting_pub_image == "raw":
-            # self._pub3.publish(self.bridge.cv2_to_imgmsg(cv_origin, "bgr8"))
-            self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
+            self._pub3.publish(self.cvBridge.cv2_to_imgmsg(cv_origin, "bgr8"))
+            self._pub4.publish(self.cvBridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
             # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
-
 
     def main(self):
         rospy.spin()
