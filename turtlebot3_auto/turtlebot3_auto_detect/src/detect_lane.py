@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+#Special thanks to Roger Sacchelli (https://github.com/rogersacchelli/Lanes-Detection-with-OpenCV)
+
 import rospy
 import cv2
 import numpy as np
@@ -15,7 +18,8 @@ def callback(x):
 
 class DetectLane():
     def __init__(self):
-        self.showing_images = "on" # you can choose showing images or not by "on", "off"
+        self.showing_plot_track = "off"
+        self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
@@ -58,25 +62,24 @@ class DetectLane():
         cv_white_lane = np.copy(cv_image)
         cv_yellow_lane = np.copy(cv_image)
 
+        # find White and Yellow Lanes
         cv_white_lane = self.findWhiteLane(cv_white_lane)
         cv_yellow_lane = self.findYellowLane(cv_yellow_lane)
 
-        # cv2.imshow('cv_white_lane', cv_white_lane), cv2.waitKey(1)
-        # cv2.imshow('cv_yellow_lane', cv_yellow_lane), cv2.waitKey(1)
+        # Bitwise-OR mask to sum up two lane images
+        cv_lanes = cv2.bitwise_or(cv_white_lane, cv_yellow_lane, mask = None)
 
-        # Bitwise-OR mask and original image
-        res = cv2.bitwise_or(cv_white_lane, cv_yellow_lane, mask = None)
-
-        cv2.imshow('lanes', res), cv2.waitKey(1)
+        if self.showing_images == "on":
+            cv2.imshow('lanes', cv_lanes), cv2.waitKey(1)
 
         try:
-            left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, res)
+            left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
 
             mov_avg_left = np.append(mov_avg_left,np.array([left_fit]), axis=0)
             mov_avg_right = np.append(mov_avg_right,np.array([right_fit]), axis=0)
 
         except:
-            left_fit, right_fit = self.sliding_windown(res)
+            left_fit, right_fit = self.sliding_windown(cv_lanes)
 
             mov_avg_left = np.array([left_fit])
             mov_avg_right = np.array([right_fit])
@@ -99,30 +102,10 @@ class DetectLane():
         # t_fit = time.time() - t_fit0
 
         # t_draw0 = time.time()
-        final = self.draw_lines(cv_image, res, left_fit, right_fit)
-        # final = self.draw_lines(cv_image, res, left_fit, right_fit, perspective=[src,dst])
+        final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
+        # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit, perspective=[src,dst])
 
         cv2.imshow('final', final), cv2.waitKey(1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         # publishing calbrated and Bird's eye view as compressed image
         if self.selecting_pub_image == "compressed":
@@ -258,6 +241,21 @@ class DetectLane():
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
+        # Generate x and y values for plotting
+        if self.showing_plot_track == "on":
+            ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
+            left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+            right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+            
+            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+            out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+            plt.imshow(out_img)
+            plt.plot(left_fitx, ploty, color='yellow')
+            plt.plot(right_fitx, ploty, color='yellow')
+            plt.xlim(0, 1280)
+            plt.ylim(720, 0)
+            plt.show()
+
         return left_fit, right_fit
 
     def sliding_windown(self, img_w):
@@ -274,7 +272,7 @@ class DetectLane():
         rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
         # Choose the number of sliding windows
-        nwindows = 9
+        nwindows = 20#9
         # Set height of windows
         window_height = np.int(img_w.shape[0] / nwindows)
         # Identify the x and y positions of all nonzero pixels in the image
@@ -337,22 +335,23 @@ class DetectLane():
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
-        # # Generate x and y values for plotting
-        # ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
-        # left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-        # right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
-        
-        # out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-        # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-        # plt.imshow(out_img)
-        # plt.plot(left_fitx, ploty, color='yellow')
-        # plt.plot(right_fitx, ploty, color='yellow')
-        # plt.xlim(0, 1280)
-        # plt.ylim(720, 0)
+        # Generate x and y values for plotting
+        if self.showing_plot_track == "on":
+            ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
+            left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+            right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+            
+            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+            out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+            plt.imshow(out_img)
+            plt.plot(left_fitx, ploty, color='yellow')
+            plt.plot(right_fitx, ploty, color='yellow')
+            plt.xlim(0, 1280)
+            plt.ylim(720, 0)
+            plt.show()
 
         return left_fit, right_fit
 
-    # def draw_lines(self, img, img_w, left_fit, right_fit, perspective):
     def draw_lines(self, img, img_w, left_fit, right_fit):
         # Create an image to draw the lines on
         warp_zero = np.zeros_like(img_w).astype(np.uint8)
@@ -373,7 +372,8 @@ class DetectLane():
         #cv2.fillPoly(color_warp_center, np.int_([pts]), (0, 255, 0))
         cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
-        cv2.imshow('color_warp', color_warp), cv2.waitKey(1)
+        if self.showing_images == "on":
+            cv2.imshow('color_warp', color_warp), cv2.waitKey(1)
 
         # # Warp the blank back to original image space using inverse perspective matrix (Minv)
         # newwarp = warp(color_warp, perspective[1], perspective[0])
@@ -385,7 +385,8 @@ class DetectLane():
         cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
         # newwarp_lines = warp(color_warp_lines, perspective[1], perspective[0])
 
-        cv2.imshow('color_warp_lines', color_warp_lines), cv2.waitKey(1)
+        if self.showing_images == "on":
+            cv2.imshow('color_warp_lines', color_warp_lines), cv2.waitKey(1)
 
         result = cv2.addWeighted(result, 1, color_warp_lines, 1, 0)
 

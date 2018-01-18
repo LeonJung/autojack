@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-#Special thanks to KiHoon Kim
+#Special thanks to AuTURBO - Kihoon Kim (https://github.com/Kihoon0716/self_driving_turtlebot3)
 
 import rospy
 import cv2
@@ -16,8 +16,8 @@ def callback(x):
 
 class ImageToGround():
     def __init__(self):
-        self.trackbar = "on" # you can choose showing trackbar or not by "on", "off"
-        self.showing_images = "on" # you can choose showing images or not by "on", "off"
+        self.trackbar = "off" # you can choose showing trackbar or not by "on", "off"
+        self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
