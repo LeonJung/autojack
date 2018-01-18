@@ -15,7 +15,7 @@ def callback(x):
 
 class DetectLane():
     def __init__(self):
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
+        self.showing_images = "on" # you can choose showing images or not by "on", "off"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
@@ -99,10 +99,10 @@ class DetectLane():
         # t_fit = time.time() - t_fit0
 
         # t_draw0 = time.time()
-        # final = self.draw_lines(cv_image, res, left_fit, right_fit)
+        final = self.draw_lines(cv_image, res, left_fit, right_fit)
         # final = self.draw_lines(cv_image, res, left_fit, right_fit, perspective=[src,dst])
 
-
+        cv2.imshow('final', final), cv2.waitKey(1)
 
 
 
@@ -149,7 +149,7 @@ class DetectLane():
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         Hue_l = 34
-        Hue_h = 65
+        Hue_h = 84
         Saturation_l = 13
         Saturation_h = 65
         Lightness_l = 0
@@ -184,7 +184,8 @@ class DetectLane():
         res = cv2.bitwise_and(image, image, mask = mask)
 
         # cv2.imshow('frame_white',image), cv2.waitKey(1)
-        cv2.imshow('mask_white',mask), cv2.waitKey(1)
+        if self.showing_images == "on":
+            cv2.imshow('mask_white',mask), cv2.waitKey(1)
         # cv2.imshow('res_white',res), cv2.waitKey(1)
 
         return mask
@@ -228,7 +229,8 @@ class DetectLane():
         res = cv2.bitwise_and(image, image, mask = mask)
 
         # cv2.imshow('frame_yellow',image), cv2.waitKey(1)
-        cv2.imshow('mask_yellow',mask), cv2.waitKey(1)
+        if self.showing_images == "on":
+            cv2.imshow('mask_yellow',mask), cv2.waitKey(1)
         # cv2.imshow('res_yellow',res), cv2.waitKey(1)
 
         return mask
@@ -300,13 +302,13 @@ class DetectLane():
             win_xright_low = rightx_current - margin
             win_xright_high = rightx_current + margin
             # Draw the windows on the visualization image
-            try:
-                cv2.rectangle(out_img, (win_xleft_low, win_y_low), (win_xleft_high, win_y_high), (0, 255, 0), 2)
-                cv2.rectangle(out_img, (win_xright_low, win_y_low), (win_xright_high, win_y_high), (0, 255, 0), 2)
+            # try:
+            cv2.rectangle(out_img, (win_xleft_low, win_y_low), (win_xleft_high, win_y_high), (0, 255, 0), 2)
+            cv2.rectangle(out_img, (win_xright_low, win_y_low), (win_xright_high, win_y_high), (0, 255, 0), 2)
             
-            except:
-                rospy.loginfo("%d %d %d %d", win_xleft_low, win_y_low, win_xleft_high, win_y_high)
-                rospy.loginfo("%d %d %d %d", win_xright_low, win_y_low, win_xright_high, win_y_high)
+            # except:
+            #     rospy.loginfo("%d %d %d %d", win_xleft_low, win_y_low, win_xleft_high, win_y_high)
+            #     rospy.loginfo("%d %d %d %d", win_xright_low, win_y_low, win_xright_high, win_y_high)
             # Identify the nonzero pixels in x and y within the window
             good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xleft_low) & (
                 nonzerox < win_xleft_high)).nonzero()[0]
@@ -335,16 +337,11 @@ class DetectLane():
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
 
-
-
-
-
-
-        # Generate x and y values for plotting
+        # # Generate x and y values for plotting
         # ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
         # left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
         # right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
-        #
+        
         # out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
         # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
         # plt.imshow(out_img)
@@ -357,44 +354,48 @@ class DetectLane():
 
     # def draw_lines(self, img, img_w, left_fit, right_fit, perspective):
     def draw_lines(self, img, img_w, left_fit, right_fit):
-        # # Create an image to draw the lines on
-        # warp_zero = np.zeros_like(img_w).astype(np.uint8)
-        # color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
-        # #color_warp_center = np.dstack((warp_zero, warp_zero, warp_zero))
+        # Create an image to draw the lines on
+        warp_zero = np.zeros_like(img_w).astype(np.uint8)
+        color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+        #color_warp_center = np.dstack((warp_zero, warp_zero, warp_zero))
 
         ploty = np.linspace(0, img.shape[0] - 1, img.shape[0])
 
         left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
         right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
-        # # Recast the x and y points into usable format for cv2.fillPoly()
-        # pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-        # pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-        # pts = np.hstack((pts_left, pts_right))
+        # Recast the x and y points into usable format for cv2.fillPoly()
+        pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+        pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+        pts = np.hstack((pts_left, pts_right))
 
-        # # Draw the lane onto the warped blank image
-        # #cv2.fillPoly(color_warp_center, np.int_([pts]), (0, 255, 0))
-        # cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+        # Draw the lane onto the warped blank image
+        #cv2.fillPoly(color_warp_center, np.int_([pts]), (0, 255, 0))
+        cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+
+        cv2.imshow('color_warp', color_warp), cv2.waitKey(1)
 
         # # Warp the blank back to original image space using inverse perspective matrix (Minv)
         # newwarp = warp(color_warp, perspective[1], perspective[0])
         # # Combine the result with the original image
-        # result = cv2.addWeighted(img, 1, newwarp, 0.2, 0)
+        result = cv2.addWeighted(img, 1, color_warp, 0.2, 0)
 
-        # color_warp_lines = np.dstack((warp_zero, warp_zero, warp_zero))
-        # cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
-        # cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
+        color_warp_lines = np.dstack((warp_zero, warp_zero, warp_zero))
+        cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+        cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
         # newwarp_lines = warp(color_warp_lines, perspective[1], perspective[0])
 
-        # result = cv2.addWeighted(result, 1, newwarp_lines, 1, 0)
+        cv2.imshow('color_warp_lines', color_warp_lines), cv2.waitKey(1)
+
+        result = cv2.addWeighted(result, 1, color_warp_lines, 1, 0)
 
         # ----- Radius Calculation ------ #
 
         img_height = img.shape[0]
         y_eval = img_height
 
-        ym_per_pix = 30 / 720.  # meters per pixel in y dimension
-        xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
+        ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
+        xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
 
         ploty = np.linspace(0, img_height - 1, img_height)
         # Fit new polynomials to x,y in world space
@@ -425,10 +426,10 @@ class DetectLane():
 
         rospy.loginfo("%s", text)
 
-        # for i, line in enumerate(text.split('\n')):
-        #     i = 50 + 20 * i
-        #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
-        # return result
+        for i, line in enumerate(text.split('\n')):
+            i = 50 + 20 * i
+            cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
+        return result
 
 
     def main(self):
