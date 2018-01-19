@@ -122,15 +122,15 @@ class ImageToGround():
         # cv_Homography = cv2.cvtColor(cv_Homography, cv2.COLOR_RGB2GRAY)
         # ret, cv_Homography = cv2.threshold(cv_Homography, binary_threshold, 255, cv2.THRESH_BINARY)
 
-        cv2.namedWindow('cv_image', cv2.WINDOW_AUTOSIZE)
-        cv2.moveWindow('cv_image', 0, 250)
-        cv2.namedWindow('Homography', cv2.WINDOW_AUTOSIZE)
-        cv2.moveWindow('Homography', 500, 250)
-        # cv2.namedWindow('res2', cv2.WINDOW_AUTOSIZE)
-        # cv2.moveWindow('res2', 1000, 250)
-
         # showing calibrated iamge and Bird's eye view image
         if self.showing_images == "on":
+            cv2.namedWindow('cv_image', cv2.WINDOW_AUTOSIZE)
+            cv2.moveWindow('cv_image', 0, 250)
+            cv2.namedWindow('Homography', cv2.WINDOW_AUTOSIZE)
+            cv2.moveWindow('Homography', 500, 250)
+            # cv2.namedWindow('res2', cv2.WINDOW_AUTOSIZE)
+            # cv2.moveWindow('res2', 1000, 250)
+
             cv2.imshow('cv_image', cv_image), cv2.waitKey(1)
             cv2.imshow('Homography', cv_Homography), cv2.waitKey(1)
 

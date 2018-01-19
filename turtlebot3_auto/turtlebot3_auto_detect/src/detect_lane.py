@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
+from std_msgs.msg import Float64
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage
 
@@ -19,14 +20,15 @@ def callback(x):
 class DetectLane():
     def __init__(self):
         self.showing_plot_track = "off"
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
+        self.showing_images = "on" # you can choose showing images or not by "on", "off"
+        self.showing_final_image = "on"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
-        self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
+        self.selecting_pub_image = "raw" # you can choose image type "compressed", "raw"
 
         if self.selecting_sub_image == "compressed":
-            self._sub = rospy.Subscriber('/image_birdseye_compressed', CompressedImage, self.callback, queue_size=1)
+            self._sub = rospy.Subscriber('/image_birdseye_compressed', CompressedImage, self.callback, queue_size = 1)
         else:
-            self._sub = rospy.Subscriber('/image_birdseye', Image, self.callback, queue_size=1)
+            self._sub = rospy.Subscriber('/image_birdseye', Image, self.callback, queue_size = 1)
 
         # There are 4 Publishers
         # pub1 : calibrated image as compressed image
@@ -35,11 +37,12 @@ class DetectLane():
         # pub4 : Bird's eye view image as raw image
         # if you do not want to publish some topic, delete pub definition in __init__ function and publishing process in callback function
         if self.selecting_pub_image == "compressed":
-            self._pub1 = rospy.Publisher('/image_lanes_compressed', CompressedImage, queue_size=1)
-            # self._pub2 = rospy.Publisher('/image_birdseye_compressed', CompressedImage, queue_size=1)
+            self._pub1 = rospy.Publisher('/image_lanes_compressed', CompressedImage, queue_size = 1)
         elif self.selecting_pub_image == "raw":
-            self._pub3 = rospy.Publisher('/image_lanes', Image, queue_size=1)
-            # self._pub4 = rospy.Publisher('/image_birdseye', Image, queue_size=1)
+            self._pub2 = rospy.Publisher('/image_lanes', Image, queue_size = 1)
+
+        self._pub3 = rospy.Publisher('/lane/desired_center', Float64, queue_size = 1)
+        # self._pub4 = rospy.Publisher('/lane/off_center', Float64, queue_size = 1)
 
         self.cvBridge = CvBridge()
 
@@ -63,8 +66,8 @@ class DetectLane():
         cv_yellow_lane = np.copy(cv_image)
 
         # find White and Yellow Lanes
-        cv_white_lane = self.findWhiteLane(cv_white_lane)
-        cv_yellow_lane = self.findYellowLane(cv_yellow_lane)
+        cv_white_lane = self.maskWhiteLane(cv_white_lane)
+        cv_yellow_lane = self.maskYellowLane(cv_yellow_lane)
 
         # Bitwise-OR mask to sum up two lane images
         cv_lanes = cv2.bitwise_or(cv_white_lane, cv_yellow_lane, mask = None)
@@ -73,25 +76,25 @@ class DetectLane():
             cv2.imshow('lanes', cv_lanes), cv2.waitKey(1)
 
         try:
-            left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
+            desired_center, left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
 
             mov_avg_left = np.append(mov_avg_left,np.array([left_fit]), axis=0)
             mov_avg_right = np.append(mov_avg_right,np.array([right_fit]), axis=0)
 
         except:
-            left_fit, right_fit = self.sliding_windown(cv_lanes)
+            desired_center, left_fit, right_fit = self.sliding_windown(cv_lanes)
 
             mov_avg_left = np.array([left_fit])
             mov_avg_right = np.array([right_fit])
 
         MOV_AVG_LENGTH = 5
 
-        left_fit = np.array([np.mean(mov_avg_left[::-1][:,0][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_left[::-1][:,1][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_left[::-1][:,2][0:MOV_AVG_LENGTH])])
-        right_fit = np.array([np.mean(mov_avg_right[::-1][:,0][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_right[::-1][:,1][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_right[::-1][:,2][0:MOV_AVG_LENGTH])])
+        left_fit = np.array([np.mean(mov_avg_left[::-1][:, 0][0:MOV_AVG_LENGTH]),
+                             np.mean(mov_avg_left[::-1][:, 1][0:MOV_AVG_LENGTH]),
+                             np.mean(mov_avg_left[::-1][:, 2][0:MOV_AVG_LENGTH])])
+        right_fit = np.array([np.mean(mov_avg_right[::-1][:, 0][0:MOV_AVG_LENGTH]),
+                             np.mean(mov_avg_right[::-1][:, 1][0:MOV_AVG_LENGTH]),
+                             np.mean(mov_avg_right[::-1][:, 2][0:MOV_AVG_LENGTH])])
 
         if mov_avg_left.shape[0] > 1000:
             mov_avg_left = mov_avg_left[0:MOV_AVG_LENGTH]
@@ -102,18 +105,29 @@ class DetectLane():
         # t_fit = time.time() - t_fit0
 
         # t_draw0 = time.time()
-        final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
+        if self.showing_final_image == "on":
+            final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
         # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit, perspective=[src,dst])
 
-        cv2.imshow('final', final), cv2.waitKey(1)
+        if self.showing_images == "on":
+            cv2.imshow('final', final), cv2.waitKey(1)
 
         # publishing calbrated and Bird's eye view as compressed image
         if self.selecting_pub_image == "compressed":
-            msg_calibration = CompressedImage()
-            msg_calibration.header.stamp = rospy.Time.now()
-            msg_calibration.format = "jpeg"
-            msg_calibration.data = np.array(cv2.imencode('.jpg', cv_image)[1]).tostring()
-            self._pub1.publish(msg_calibration)
+            msg_final_img = CompressedImage()
+            msg_final_img.header.stamp = rospy.Time.now()
+            msg_final_img.format = "jpeg"
+            msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
+            self._pub1.publish(msg_final_img)
+
+            msg_desired_center = Float64()
+            msg_desired_center.data = desired_center.item(300)
+
+            # msg_off_center = Float64()
+            # msg_off_center.data = off_center
+
+            self._pub3.publish(msg_desired_center)
+            # self._pub4.publish(msg_off_center)
 
             # msg_homography = CompressedImage()
             # msg_homography.header.stamp = rospy.Time.now()
@@ -123,11 +137,21 @@ class DetectLane():
 
         # publishing calbrated and Bird's eye view as raw image
         elif self.selecting_pub_image == "raw":
-            self._pub3.publish(self.cvBridge.cv2_to_imgmsg(cv_image, "bgr8"))
+            self._pub2.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
+
+            msg_desired_center = Float64()
+            msg_desired_center.data = desired_center.item(300)
+
+            # msg_off_center = Float64()
+            # msg_off_center.data = off_center
+
+            self._pub3.publish(msg_desired_center)
+            # self._pub4.publish(msg_off_center)
+
             # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
             # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
 
-    def findWhiteLane(self, image):
+    def maskWhiteLane(self, image):
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -173,7 +197,7 @@ class DetectLane():
 
         return mask
 
-    def findYellowLane(self, image):
+    def maskYellowLane(self, image):
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
@@ -242,11 +266,18 @@ class DetectLane():
         right_fit = np.polyfit(righty, rightx, 2)
 
         # Generate x and y values for plotting
-        if self.showing_plot_track == "on":
-            ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
-            left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-            right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+        ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
+        left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+        right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
             
+        centerx = np.mean([left_fitx, right_fitx], axis=0)
+        # print(centerx.item(300))
+
+        # for i, line in enumerate(text.split('\n')):
+        #     i = 50 + 20 * i
+        #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
+
+        if self.showing_plot_track == "on":
             out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
             out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
             plt.imshow(out_img)
@@ -254,9 +285,13 @@ class DetectLane():
             plt.plot(right_fitx, ploty, color='yellow')
             plt.xlim(0, 1280)
             plt.ylim(720, 0)
+            plt.draw()
+            plt.pause(0.00000000001)
+            plt.ion()
+            plt.clf()
             plt.show()
 
-        return left_fit, right_fit
+        return centerx, left_fit, right_fit
 
     def sliding_windown(self, img_w):
         histogram = np.sum(img_w[img_w.shape[0] / 2:, :], axis=0)
@@ -336,21 +371,28 @@ class DetectLane():
         right_fit = np.polyfit(righty, rightx, 2)
 
         # Generate x and y values for plotting
+        ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
+        left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+        right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+
+        centerx = np.mean([left_fitx, right_fitx], axis=0)
+        # print(centerx.item(300))
+
         if self.showing_plot_track == "on":
-            ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
-            left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
-            right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
-            
             out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
             out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
             plt.imshow(out_img)
             plt.plot(left_fitx, ploty, color='yellow')
             plt.plot(right_fitx, ploty, color='yellow')
-            plt.xlim(0, 1280)
-            plt.ylim(720, 0)
+            plt.xlim(0, 1000)
+            plt.ylim(600, 0)
+            plt.draw()
+            plt.pause(0.00000000001)
+            plt.ion()
+            plt.clf()
             plt.show()
 
-        return left_fit, right_fit
+        return centerx, left_fit, right_fit
 
     def draw_lines(self, img, img_w, left_fit, right_fit):
         # Create an image to draw the lines on
@@ -390,46 +432,47 @@ class DetectLane():
 
         result = cv2.addWeighted(result, 1, color_warp_lines, 1, 0)
 
-        # ----- Radius Calculation ------ #
+        # # ----- Radius Calculation ------ #
 
-        img_height = img.shape[0]
-        y_eval = img_height
+        # img_height = img.shape[0]
+        # y_eval = img_height
 
-        ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
-        xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
+        # ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
+        # xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
 
-        ploty = np.linspace(0, img_height - 1, img_height)
-        # Fit new polynomials to x,y in world space
-        left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
-        right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
+        # ploty = np.linspace(0, img_height - 1, img_height)
+        # # Fit new polynomials to x,y in world space
+        # left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
+        # right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
 
-        # Calculate the new radii of curvature
-        left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
-            2 * left_fit_cr[0])
+        # # Calculate the new radii of curvature
+        # left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        #     2 * left_fit_cr[0])
 
-        right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
-            2 * right_fit_cr[0])
+        # right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        #     2 * right_fit_cr[0])
 
-        radius = round((float(left_curverad) + float(right_curverad))/2.,2)
+        # radius = round((float(left_curverad) + float(right_curverad))/2.,2)
 
-        # ----- Off Center Calculation ------ #
+        # # ----- Off Center Calculation ------ #
 
-        lane_width = (right_fit[2] - left_fit[2]) * xm_per_pix
-        center = (right_fit[2] - left_fit[2]) / 2
-        off_left = (center - left_fit[2]) * xm_per_pix
-        off_right = -(right_fit[2] - center) * xm_per_pix
-        off_center = round((center - img.shape[0] / 2.) * xm_per_pix,2)
+        # lane_width = (right_fit[2] - left_fit[2]) * xm_per_pix
+        # center = (right_fit[2] - left_fit[2]) / 2
+        # off_left = (center - left_fit[2]) * xm_per_pix
+        # off_right = -(right_fit[2] - center) * xm_per_pix
 
-        # --- Print text on screen ------ #
-        #if radius < 5000.0:
-        text = "radius = %s [m]\noffcenter = %s [m]" % (str(radius), str(off_center))
-        #text = "radius = -- [m]\noffcenter = %s [m]" % (str(off_center))
+        # off_center = round((center - img.shape[0] / 2.) * xm_per_pix,2)
 
-        rospy.loginfo("%s", text)
+        # # --- Print text on screen ------ #
+        # #if radius < 5000.0:
+        # text = "radius = %s [m]\noffcenter = %s [m]" % (str(radius), str(off_center))
+        # #text = "radius = -- [m]\noffcenter = %s [m]" % (str(off_center))
 
-        for i, line in enumerate(text.split('\n')):
-            i = 50 + 20 * i
-            cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
+        # rospy.loginfo("%s", text)
+
+        # for i, line in enumerate(text.split('\n')):
+        #     i = 50 + 20 * i
+        #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
         return result
 
 
