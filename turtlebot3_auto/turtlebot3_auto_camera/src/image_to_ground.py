@@ -22,9 +22,11 @@ class ImageToGround():
         self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
         if self.selecting_sub_image == "compressed":
-            self._sub = rospy.Subscriber('/camera/image_rect_color/compressed', CompressedImage, self.callback, queue_size=1)
+            # self._sub = rospy.Subscriber('/camera/image_rect_color/compressed', CompressedImage, self.callback, queue_size=1)
+            self._sub = rospy.Subscriber('/image_redefined_compressed2', CompressedImage, self.callback, queue_size=1)
         else:
-            self._sub = rospy.Subscriber('/camera/image_rect_color', Image, self.callback, queue_size=1)
+            # self._sub = rospy.Subscriber('/camera/image_rect_color', Image, self.callback, queue_size=1)
+            self._sub = rospy.Subscriber('/image_redefined2', Image, self.callback, queue_size=1)
 
         # There are 4 Publishers
         # pub1 : calibrated image as compressed image

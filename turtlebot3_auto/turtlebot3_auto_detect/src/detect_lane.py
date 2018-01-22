@@ -20,7 +20,7 @@ def callback(x):
 class DetectLane():
     def __init__(self):
         self.showing_plot_track = "off"
-        self.showing_images = "on" # you can choose showing images or not by "on", "off"
+        self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.showing_final_image = "on"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "raw" # you can choose image type "compressed", "raw"
@@ -76,13 +76,16 @@ class DetectLane():
             cv2.imshow('lanes', cv_lanes), cv2.waitKey(1)
 
         try:
-            desired_center, left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
+            # desired_center, left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
+            left_fit = self.fit_from_lines2(left_fit, cv_white_lane, 'left')
+            right_fit = self.fit_from_lines2(right_fit, cv_yellow_lane, 'right')
 
             mov_avg_left = np.append(mov_avg_left,np.array([left_fit]), axis=0)
             mov_avg_right = np.append(mov_avg_right,np.array([right_fit]), axis=0)
 
         except:
-            desired_center, left_fit, right_fit = self.sliding_windown(cv_lanes)
+            left_fit = self.sliding_windown2(cv_white_lane, 'left')
+            right_fit = self.sliding_windown2(cv_yellow_lane, 'right')
 
             mov_avg_left = np.array([left_fit])
             mov_avg_right = np.array([right_fit])
@@ -109,19 +112,20 @@ class DetectLane():
             final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
         # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit, perspective=[src,dst])
 
-        if self.showing_images == "on":
+        if self.showing_final_image == "on":
             cv2.imshow('final', final), cv2.waitKey(1)
 
         # publishing calbrated and Bird's eye view as compressed image
         if self.selecting_pub_image == "compressed":
-            msg_final_img = CompressedImage()
-            msg_final_img.header.stamp = rospy.Time.now()
-            msg_final_img.format = "jpeg"
-            msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
-            self._pub1.publish(msg_final_img)
+            # msg_final_img = CompressedImage()
+            # msg_final_img.header.stamp = rospy.Time.now()
+            # msg_final_img.format = "jpeg"
+            # msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
+            # self._pub1.publish(msg_final_img)
 
             msg_desired_center = Float64()
-            msg_desired_center.data = desired_center.item(300)
+            msg_desired_center.data = desired_center.item(450)
+            # msg_desired_center.data = desired_center.item(300)
 
             # msg_off_center = Float64()
             # msg_off_center.data = off_center
@@ -137,15 +141,15 @@ class DetectLane():
 
         # publishing calbrated and Bird's eye view as raw image
         elif self.selecting_pub_image == "raw":
-            self._pub2.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
+            # self._pub2.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
 
             msg_desired_center = Float64()
-            msg_desired_center.data = desired_center.item(300)
+            # msg_desired_center.data = desired_center.item(300)
 
             # msg_off_center = Float64()
             # msg_off_center.data = off_center
 
-            self._pub3.publish(msg_desired_center)
+            # self._pub3.publish(msg_desired_center)
             # self._pub4.publish(msg_off_center)
 
             # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
@@ -155,11 +159,11 @@ class DetectLane():
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        Hue_l = 34
+        Hue_l = 7
         Hue_h = 84
-        Saturation_l = 13
+        Saturation_l = 7
         Saturation_h = 65
-        Lightness_l = 0
+        Lightness_l = 118
         Lightness_h = 255
 
         if self.showing_images == "on":
@@ -203,9 +207,9 @@ class DetectLane():
 
         Hue_l = 30
         Hue_h = 115
-        Saturation_l = 80
+        Saturation_l = 100
         Saturation_h = 255
-        Lightness_l = 80
+        Lightness_l = 89
         Lightness_h = 255
 
         if self.showing_images == "on":
@@ -292,6 +296,157 @@ class DetectLane():
             plt.show()
 
         return centerx, left_fit, right_fit
+
+    def fit_from_lines2(self, left_fit, img_w, left_or_right):
+        # Assume you now have a new warped binary image
+        # from the next frame of video (also called "binary_warped")
+        # It's now much easier to find line pixels!
+        nonzero = img_w.nonzero()
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        margin = 100
+        left_lane_inds = ((nonzerox > (left_fit[0] * (nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] - margin)) & (
+        nonzerox < (left_fit[0] * (nonzeroy ** 2) + left_fit[1] * nonzeroy + left_fit[2] + margin)))
+
+        # Again, extract left and right line pixel positions
+        leftx = nonzerox[left_lane_inds]
+        lefty = nonzeroy[left_lane_inds]
+        # Fit a second order polynomial to each
+        left_fit = np.polyfit(lefty, leftx, 2)
+
+        # Generate x and y values for plotting
+        ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
+        left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+            
+        # centerx = np.mean([left_fitx, right_fitx], axis=0)
+        # print(centerx.item(300))
+
+        # for i, line in enumerate(text.split('\n')):
+        #     i = 50 + 20 * i
+        #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
+
+        if self.showing_plot_track == "on":
+            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+            plt.imshow(out_img)
+            plt.plot(left_fitx, ploty, color='yellow')
+            plt.xlim(0, 1280)
+            plt.ylim(720, 0)
+            plt.draw()
+            plt.pause(0.00000000001)
+            plt.ion()
+            plt.clf()
+            plt.show()
+
+        return left_fit
+
+    def sliding_windown2(self, img_w, left_or_right):
+        histogram = np.sum(img_w[img_w.shape[0] / 2:, :], axis=0)
+
+        # Create an output image to draw on and visualize the result
+        out_img = np.dstack((img_w, img_w, img_w)) * 255
+
+        # Find the peak of the left and right halves of the histogram
+        # These will be the starting point for the left and right lines
+        midpoint = np.int(histogram.shape[0] / 2)
+
+        if left_or_right == 'left':
+            leftx_base = np.argmax(histogram[:midpoint])
+        elif left_or_right == 'right':
+            leftx_base = np.argmax(histogram[midpoint:]) + midpoint
+
+        # rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+
+        # Choose the number of sliding windows
+        nwindows = 20#9
+        # Set height of windows
+        window_height = np.int(img_w.shape[0] / nwindows)
+        # Identify the x and y positions of all nonzero pixels in the image
+        nonzero = img_w.nonzero()
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        # Current positions to be updated for each window
+        leftx_current = leftx_base
+        # rightx_current = rightx_base
+        # Set the width of the windows +/- margin
+        margin = 50#100
+        # Set minimum number of pixels found to recenter window
+        minpix = 50
+        # Create empty lists to receive left and right lane pixel indices
+        left_lane_inds = []
+        # right_lane_inds = []
+
+        # Step through the windows one by one
+        for window in range(nwindows):
+            # Identify window boundaries in x and y (and right and left)
+            win_y_low = img_w.shape[0] - (window + 1) * window_height
+            win_y_high = img_w.shape[0] - window * window_height
+            win_xleft_low = leftx_current - margin
+            win_xleft_high = leftx_current + margin
+            # win_xright_low = rightx_current - margin
+            # win_xright_high = rightx_current + margin
+            # Draw the windows on the visualization image
+            # try:
+            cv2.rectangle(out_img, (win_xleft_low, win_y_low), (win_xleft_high, win_y_high), (0, 255, 0), 2)
+            # cv2.rectangle(out_img, (win_xright_low, win_y_low), (win_xright_high, win_y_high), (0, 255, 0), 2)
+            
+            # except:
+            #     rospy.loginfo("%d %d %d %d", win_xleft_low, win_y_low, win_xleft_high, win_y_high)
+            #     rospy.loginfo("%d %d %d %d", win_xright_low, win_y_low, win_xright_high, win_y_high)
+            # Identify the nonzero pixels in x and y within the window
+            good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xleft_low) & (
+                nonzerox < win_xleft_high)).nonzero()[0]
+            # good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xright_low) & (
+            #     nonzerox < win_xright_high)).nonzero()[0]
+            # Append these indices to the lists
+            left_lane_inds.append(good_left_inds)
+            # right_lane_inds.append(good_right_inds)
+            # If you found > minpix pixels, recenter next window on their mean position
+            if len(good_left_inds) > minpix:
+                leftx_current = np.int(np.mean(nonzerox[good_left_inds]))
+            # if len(good_right_inds) > minpix:
+            #     rightx_current = np.int(np.mean(nonzerox[good_right_inds]))
+
+        # Concatenate the arrays of indices
+        left_lane_inds = np.concatenate(left_lane_inds)
+        # right_lane_inds = np.concatenate(right_lane_inds)
+
+        # Extract left and right line pixel positions
+        leftx = nonzerox[left_lane_inds]
+        lefty = nonzeroy[left_lane_inds]
+        # rightx = nonzerox[right_lane_inds]
+        # righty = nonzeroy[right_lane_inds]
+
+        # Fit a second order polynomial to each
+        try:
+            left_fit = np.polyfit(lefty, leftx, 2)
+            self.left_fit_bef = left_fit
+        except:
+            left_fit = self.left_fit_bef
+        # right_fit = np.polyfit(righty, rightx, 2)
+
+        # Generate x and y values for plotting
+        ploty = np.linspace(0, img_w.shape[0] - 1, img_w.shape[0])
+        left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+        # right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+
+        # centerx = np.mean([left_fitx, right_fitx], axis=0)
+        # print(centerx.item(300))
+
+        if self.showing_plot_track == "on":
+            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+            # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+            plt.imshow(out_img)
+            plt.plot(left_fitx, ploty, color='yellow')
+            # plt.plot(right_fitx, ploty, color='yellow')
+            plt.xlim(0, 1000)
+            plt.ylim(600, 0)
+            plt.draw()
+            plt.pause(0.00000000001)
+            plt.ion()
+            plt.clf()
+            plt.show()
+
+        return left_fit
 
     def sliding_windown(self, img_w):
         histogram = np.sum(img_w[img_w.shape[0] / 2:, :], axis=0)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 #Special thanks to chaosmail (https://gist.github.com/chaosmail/8372717#file-python-pid_controller)
+#(https://www.robotshop.com/letsmakerobots/files/PID_Line_Following_Tutorials.pdf)
 
 import rospy
 import numpy as np
@@ -78,7 +79,7 @@ class PathFollowing():
         
 
         twist = Twist()
-        twist.linear.x = 0.04#0.030
+        twist.linear.x = 0.16#0.04#0.030
         twist.linear.y = 0
         twist.linear.z = 0
         twist.angular.x = 0
