@@ -110,61 +110,63 @@ class ColorRedefinition():
 
 
 
-        ## New method
-        # TODO : processing speed
-        # TODO : should this get image_to_ground image? or plain image? if it calculates based on plain image, the brightness varies on so much stuffs around
+        dst = np.copy(cv_image)
 
-        clip_hist_percent = 1.0
+        # ## New method
+        # # TODO : processing speed
+        # # TODO : should this get image_to_ground image? or plain image? if it calculates based on plain image, the brightness varies on so much stuffs around
+
+        # clip_hist_percent = 1.0
         
-        hist_size = 256
-        alpha = 0
-        beta = 0
-        min_gray = 0
-        max_gray = 0
+        # hist_size = 256
+        # alpha = 0
+        # beta = 0
+        # min_gray = 0
+        # max_gray = 0
 
-        #gray = np.zeros([240, 320], dtype=np.uint8)
+        # #gray = np.zeros([240, 320], dtype=np.uint8)
 
-        gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+        # gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
 
-        if clip_hist_percent == 0.0:
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(gray)
-        else:
-        # cv2.calcHist(images, channels, mask, histSize, ranges[, hist[, accumulate]])
-            hist = cv2.calcHist([gray], [0], None, [hist_size], [0, hist_size])
-            # hist, bin_edges = np.histogram(gray, normed=True)
+        # if clip_hist_percent == 0.0:
+        #     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(gray)
+        # else:
+        # # cv2.calcHist(images, channels, mask, histSize, ranges[, hist[, accumulate]])
+        #     hist = cv2.calcHist([gray], [0], None, [hist_size], [0, hist_size])
+        #     # hist, bin_edges = np.histogram(gray, normed=True)
 
-            # plt.plot(hist)
-            # plt.xlim([0,256])
-            # plt.show()
+        #     # plt.plot(hist)
+        #     # plt.xlim([0,256])
+        #     # plt.show()
 
-        accumulator = np.zeros((hist_size))
+        # accumulator = np.zeros((hist_size))
         
-        accumulator[0] = hist[0]
+        # accumulator[0] = hist[0]
 
-        for i in range(0, hist_size):
-            accumulator[i] = accumulator[i - 1] + hist[i]
+        # for i in range(0, hist_size):
+        #     accumulator[i] = accumulator[i - 1] + hist[i]
 
-        max = accumulator[hist_size - 1]
+        # max = accumulator[hist_size - 1]
 
-        # print(max)
+        # # print(max)
 
-        clip_hist_percent *= (max / 100.)
-        clip_hist_percent /= 2.
+        # clip_hist_percent *= (max / 100.)
+        # clip_hist_percent /= 2.
 
-        min_gray = 0
-        while accumulator[min_gray] < clip_hist_percent:
-            min_gray += 1
+        # min_gray = 0
+        # while accumulator[min_gray] < clip_hist_percent:
+        #     min_gray += 1
         
-        max_gray = hist_size - 1
-        while accumulator[max_gray] >= (max - clip_hist_percent):
-            max_gray -= 1
+        # max_gray = hist_size - 1
+        # while accumulator[max_gray] >= (max - clip_hist_percent):
+        #     max_gray -= 1
 
-        input_range = max_gray - min_gray
+        # input_range = max_gray - min_gray
 
-        alpha = (hist_size - 1) / input_range
-        beta = -min_gray * alpha
+        # alpha = (hist_size - 1) / input_range
+        # beta = -min_gray * alpha
 
-        dst = cv2.convertScaleAbs(cv_image, -1, alpha, beta)
+        # dst = cv2.convertScaleAbs(cv_image, -1, alpha, beta)
 
 
         # cv2.imshow('dst', dst)

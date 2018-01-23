@@ -57,76 +57,9 @@ class DetectLane():
         if self.selecting_sub_image == "compressed":
             #converting compressed image to opencv image
             np_arr = np.fromstring(image_msg.data, np.uint8)
-            cv_image22 = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         elif self.selecting_sub_image == "raw":
-            cv_image22 = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
-
-        ## New method
-        # TODO : processing speed
-        # TODO : should this get image_to_ground image? or plain image? if it calculates based on plain image, the brightness varies on so much stuffs around
-
-        clip_hist_percent = 1.0
-        
-        hist_size = 256
-        alpha = 0
-        beta = 0
-        min_gray = 0
-        max_gray = 0
-
-        #gray = np.zeros([240, 320], dtype=np.uint8)
-
-        gray = cv2.cvtColor(cv_image22, cv2.COLOR_BGR2GRAY)
-
-        if clip_hist_percent == 0.0:
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(gray)
-        else:
-        # cv2.calcHist(images, channels, mask, histSize, ranges[, hist[, accumulate]])
-            hist = cv2.calcHist([gray], [0], None, [hist_size], [0, hist_size])
-            # hist, bin_edges = np.histogram(gray, normed=True)
-
-            # plt.plot(hist)
-            # plt.xlim([0,256])
-            # plt.show()
-
-        accumulator = np.zeros((hist_size))
-        
-        accumulator[0] = hist[0]
-
-        for i in range(0, hist_size):
-            accumulator[i] = accumulator[i - 1] + hist[i]
-
-        max = accumulator[hist_size - 1]
-
-        # print(max)
-
-        clip_hist_percent *= (max / 100.)
-        clip_hist_percent /= 2.
-
-        min_gray = 0
-        while accumulator[min_gray] < clip_hist_percent:
-            min_gray += 1
-        
-        max_gray = hist_size - 1
-        while accumulator[max_gray] >= (max - clip_hist_percent):
-            max_gray -= 1
-
-        input_range = max_gray - min_gray
-
-        alpha = (hist_size - 1) / input_range
-        beta = -min_gray * alpha
-
-        cv_image = cv2.convertScaleAbs(cv_image22, -1, alpha, beta)
-
-
-
-
-
-
-
-
-
-
-
+            cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
         # copy original image to use in lane finding process
         cv_white_lane = np.copy(cv_image)
@@ -144,15 +77,15 @@ class DetectLane():
 
         try:
             # desired_center, left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
-            left_fitx, left_fit = self.fit_from_lines2(left_fit, cv_white_lane, 'left')
-            right_fitx, right_fit = self.fit_from_lines2(right_fit, cv_yellow_lane, 'right')
+            left_fit = self.fit_from_lines2(left_fit, cv_white_lane, 'left')
+            right_fit = self.fit_from_lines2(right_fit, cv_yellow_lane, 'right')
 
             mov_avg_left = np.append(mov_avg_left,np.array([left_fit]), axis=0)
             mov_avg_right = np.append(mov_avg_right,np.array([right_fit]), axis=0)
 
         except:
-            left_fitx, left_fit = self.sliding_windown2(cv_white_lane, 'left')
-            right_fitx, right_fit = self.sliding_windown2(cv_yellow_lane, 'right')
+            left_fit = self.sliding_windown2(cv_white_lane, 'left')
+            right_fit = self.sliding_windown2(cv_yellow_lane, 'right')
 
             mov_avg_left = np.array([left_fit])
             mov_avg_right = np.array([right_fit])
@@ -170,16 +103,6 @@ class DetectLane():
             mov_avg_left = mov_avg_left[0:MOV_AVG_LENGTH]
         if mov_avg_right.shape[0] > 1000:
             mov_avg_right = mov_avg_right[0:MOV_AVG_LENGTH]
-
-
-
-        centerx = np.mean([left_fitx, right_fitx], axis=0)
-
-
-        x = 150
-        y = 0
-        
-
 
 
         # t_fit = time.time() - t_fit0
@@ -239,8 +162,8 @@ class DetectLane():
         Hue_l = 7
         Hue_h = 84
         Saturation_l = 7
-        Saturation_h = 58
-        Lightness_l = 112
+        Saturation_h = 85
+        Lightness_l = 118
         Lightness_h = 255
 
         if self.showing_images == "on":
@@ -284,9 +207,9 @@ class DetectLane():
 
         Hue_l = 30
         Hue_h = 115
-        Saturation_l = 79
+        Saturation_l = 100
         Saturation_h = 255
-        Lightness_l = 130
+        Lightness_l = 89
         Lightness_h = 255
 
         if self.showing_images == "on":
@@ -414,7 +337,7 @@ class DetectLane():
             plt.clf()
             plt.show()
 
-        return left_fitx, left_fit
+        return left_fit
 
     def sliding_windown2(self, img_w, left_or_right):
         histogram = np.sum(img_w[img_w.shape[0] / 2:, :], axis=0)
@@ -523,7 +446,7 @@ class DetectLane():
             plt.clf()
             plt.show()
 
-        return left_fitx, left_fit
+        return left_fit
 
     def sliding_windown(self, img_w):
         histogram = np.sum(img_w[img_w.shape[0] / 2:, :], axis=0)
@@ -637,14 +560,10 @@ class DetectLane():
         left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
         right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
 
-        centerx = np.mean([left_fitx, right_fitx], axis=0)
-
         # Recast the x and y points into usable format for cv2.fillPoly()
         pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
         pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
         pts = np.hstack((pts_left, pts_right))
-
-        pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
         # Draw the lane onto the warped blank image
         #cv2.fillPoly(color_warp_center, np.int_([pts]), (0, 255, 0))
@@ -661,7 +580,6 @@ class DetectLane():
         color_warp_lines = np.dstack((warp_zero, warp_zero, warp_zero))
         cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
         cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
-        cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
         # newwarp_lines = warp(color_warp_lines, perspective[1], perspective[0])
 
         if self.showing_images == "on":
