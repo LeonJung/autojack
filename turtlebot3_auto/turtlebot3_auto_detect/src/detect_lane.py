@@ -10,8 +10,14 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float64
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage
+import tf
+
+
+from nav_msgs.msg import Odometry
 
 import matplotlib.pyplot as plt
+
+import math
 
 
 def callback(x):
@@ -29,6 +35,8 @@ class DetectLane():
             self._sub = rospy.Subscriber('/image_birdseye_compressed', CompressedImage, self.callback, queue_size = 1)
         else:
             self._sub = rospy.Subscriber('/image_birdseye', Image, self.callback, queue_size = 1)
+
+        self._sub2 = rospy.Subscriber('/odom', Odometry, self.callback2, queue_size=1)
 
         # There are 4 Publishers
         # pub1 : calibrated image as compressed image
@@ -48,6 +56,16 @@ class DetectLane():
 
         self.counter = 0
         
+        # self.now_pos_x = 0.
+        # self.now_pos_y = 0.
+        # self.now_orn_z = 0.
+
+    def callback2(self, odom_msg):
+        self.now_pos_x = odom_msg.pose.pose.position.y * 1000.
+        self.now_pos_y = odom_msg.pose.pose.position.x * 1000.
+
+        (self.now_roll, self.now_pitch, self.now_yaw) = tf.transformations.euler_from_quaternion([odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w])
+
     def callback(self, image_msg):
         # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
         # if self.counter % 3 != 0:
@@ -176,18 +194,200 @@ class DetectLane():
         centerx = np.mean([left_fitx, right_fitx], axis=0)
 
 
-        x = 150
-        y = 0
-        
-
-
-
         # t_fit = time.time() - t_fit0
 
         # t_draw0 = time.time()
         if self.showing_final_image == "on":
             final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
         # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit, perspective=[src,dst])
+
+
+######################################################## test
+
+        x_r = self.now_pos_x #20.
+        y_r = self.now_pos_y #20.
+
+        x_t = 0.
+        y_t = 380.
+
+        # x_d_init = 500.
+        # y_d_init = 300.
+
+        window_width = 1000.
+        window_height = 600.
+
+        screen_start_from_wheel_real_dist = 123.
+
+        d_ppx = 29. / 57.
+        d_ppy = 29. / 90.
+
+        # x_d = x_d_init
+        # y_d = y_d_init
+
+        theta_a = (math.atan2((y_t - y_r), (x_t - x_r)))
+        theta_p = theta_a + self.now_yaw
+
+        # print(math.degrees(theta_a))
+        # print(math.degrees(self.now_yaw))
+        # print(math.degrees(theta_p))
+
+        # rospy.loginfo("%d", (int)((x_t - x_r) ** 2 + (y_t - y_r) ** 2))
+
+        x_d = -math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.cos(theta_p)
+        y_d = math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.sin(theta_p)
+
+
+
+        x_reald = x_d / d_ppx + window_width / 2.
+        y_reald = window_height - (y_d - screen_start_from_wheel_real_dist) / d_ppy
+
+        cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
+
+##########################################################
+
+        x_d_new = d_ppx * (x_reald - window_width / 2.)
+        y_d_new = -d_ppy * (y_reald - window_height) + screen_start_from_wheel_real_dist
+
+        theta_p_new = -math.acos(x_d_new / math.sqrt(x_d_new ** 2 + y_d_new ** 2))
+        theta_a_new = theta_p_new - self.now_yaw
+
+        # rospy.loginfo("x_d_new : %f", x_d_new)
+        # rospy.loginfo("theta p : %f a : %f", theta_p_new, theta_a_new)
+
+        x_t_new = self.now_pos_x - math.sqrt((x_d_new ** 2 + y_d_new ** 2) / ((math.tan(theta_a_new) ** 2 + 1)))
+        y_t_new = self.now_pos_y + (x_t_new - self.now_pos_x) * math.tan(theta_a_new)
+
+        # rospy.loginfo("now_pos_x : %d  now_pos_y : %d", self.now_pos_x, self.now_pos_y)
+
+        rospy.loginfo("%d %d", x_t_new, y_t_new)
+
+        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
+
+        # rospy.loginfo("%d %d", x_reald, y_reald)
+
+        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
+
+
+        # x = 500
+        # # y = 0
+
+        # y = 380. # real
+        # screen_end_from_wheel_real_dist = 320.
+        # real_dist_per_pix_y = 90. / 29.
+        
+        # # print(self.now_pos_x)
+
+        # real_point_x = x
+        # in_picture_point_y = real_dist_per_pix_y * -(y - screen_end_from_wheel_real_dist - self.now_pos_x)
+
+        # print(self.now_pos_x)
+        # print(in_picture_point_y)
+
+        # cv2.circle(final,(real_point_x, (int)(in_picture_point_y)), 21, (0,0,255), -1)
+
+
+        # cv2.circle(final,(real_point_x, (int)((29. ))), 21, (0,0,255), -1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        # print(y_reald)
+
+
+        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
+
+
+        # theta_a = math.acos(x_d / math.sqrt((x_d ** 2) + (y_d ** 2)))
+
+
+
+        # l = math.sin(math.radians(30.0))
+
+        # l = math.sin(math.pi / 2.)
+
+        # print(l)
+        # print(self.now_yaw)
+
+
+        # cv2.circle(final,((int)(x_d_init), (int)(y_d_init)), 21, (0,0,255), -1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#######################################################
+
+
+
+        # x = 500
+        # # y = 0
+
+        # y = 380. # real
+        # screen_end_from_wheel_real_dist = 320.
+        # real_dist_per_pix_y = 90. / 29.
+        
+        # # print(self.now_pos_x)
+
+        # real_point_x = x
+        # in_picture_point_y = real_dist_per_pix_y * -(y - screen_end_from_wheel_real_dist - self.now_pos_x)
+
+        # print(self.now_pos_x)
+        # print(in_picture_point_y)
+
+        # cv2.circle(final,(real_point_x, (int)(in_picture_point_y)), 21, (0,0,255), -1)
+
+
+        # cv2.circle(final,(real_point_x, (int)((29. ))), 21, (0,0,255), -1)
+
+
+
+#######################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         if self.showing_final_image == "on":
             cv2.imshow('final', final), cv2.waitKey(1)
