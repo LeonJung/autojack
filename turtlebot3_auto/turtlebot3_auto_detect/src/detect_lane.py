@@ -27,6 +27,7 @@ class DetectLane():
     def __init__(self):
         self.showing_plot_track = "off"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
+
         self.showing_final_image = "on"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "raw" # you can choose image type "compressed", "raw"
@@ -55,10 +56,34 @@ class DetectLane():
         self.cvBridge = CvBridge()
 
         self.counter = 0
-        
-        # self.now_pos_x = 0.
-        # self.now_pos_y = 0.
-        # self.now_orn_z = 0.
+
+        self.step = 4
+        self.pos_err = 10.
+
+        self.window_width = 1000.
+        self.window_height = 600.
+
+        self.screen_start_from_wheel_real_dist = 123.
+
+        self.d_ppx = 29. / 57.
+        self.d_ppy = 29. / 90.
+
+        self.x_t = [0, 0, 0, 0]
+        self.y_t = np.subtract(np.arange(0, self.window_height, (self.window_height / self.step)), 1)
+
+        self.Hue_l_white = 7
+        self.Hue_h_white = 84
+        self.Saturation_l_white = 7
+        self.Saturation_h_white = 58
+        self.Lightness_l_white = 112
+        self.Lightness_h_white = 255
+
+        self.Hue_l_yellow = 30
+        self.Hue_h_yellow = 115
+        self.Saturation_l_yellow = 79
+        self.Saturation_h_yellow = 255
+        self.Lightness_l_yellow = 130
+        self.Lightness_h_yellow = 255
 
     def callback2(self, odom_msg):
         self.now_pos_x = odom_msg.pose.pose.position.y * 1000.
@@ -151,8 +176,8 @@ class DetectLane():
         cv_yellow_lane = np.copy(cv_image)
 
         # find White and Yellow Lanes
-        cv_white_lane = self.maskWhiteLane(cv_white_lane)
-        cv_yellow_lane = self.maskYellowLane(cv_yellow_lane)
+        white_fraction, cv_white_lane = self.maskWhiteLane(cv_white_lane)
+        yellow_fraction, cv_yellow_lane = self.maskYellowLane(cv_yellow_lane)
 
         # Bitwise-OR mask to sum up two lane images
         cv_lanes = cv2.bitwise_or(cv_white_lane, cv_yellow_lane, mask = None)
@@ -204,28 +229,17 @@ class DetectLane():
 
 ######################################################## test
 
-        x_r = self.now_pos_x #20.
-        y_r = self.now_pos_y #20.
+        x_r = self.now_pos_x
+        y_r = self.now_pos_y
+        theta_r = self.now_yaw
 
-        x_t = 0.
-        y_t = 380.
+        # x_t = 0.
+        # y_t = 380.
 
-        # x_d_init = 500.
-        # y_d_init = 300.
 
-        window_width = 1000.
-        window_height = 600.
 
-        screen_start_from_wheel_real_dist = 123.
-
-        d_ppx = 29. / 57.
-        d_ppy = 29. / 90.
-
-        # x_d = x_d_init
-        # y_d = y_d_init
-
-        theta_a = (math.atan2((y_t - y_r), (x_t - x_r)))
-        theta_p = theta_a + self.now_yaw
+        # theta_a = (math.atan2((y_t - y_r), (x_t - x_r)))
+        # theta_p = theta_a + theta_r
 
         # print(math.degrees(theta_a))
         # print(math.degrees(self.now_yaw))
@@ -233,33 +247,144 @@ class DetectLane():
 
         # rospy.loginfo("%d", (int)((x_t - x_r) ** 2 + (y_t - y_r) ** 2))
 
-        x_d = -math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.cos(theta_p)
-        y_d = math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.sin(theta_p)
+        # x_d = -math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.cos(theta_p)
+        # y_d = math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.sin(theta_p)
 
 
 
-        x_reald = x_d / d_ppx + window_width / 2.
-        y_reald = window_height - (y_d - screen_start_from_wheel_real_dist) / d_ppy
+        # x_reald = x_d / self.d_ppx + self.window_width / 2.
+        # y_reald = self.window_height - (y_d - self.screen_start_from_wheel_real_dist) / self.d_ppy
 
-        cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
+        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
 
 ##########################################################
 
-        x_d_new = d_ppx * (x_reald - window_width / 2.)
-        y_d_new = -d_ppy * (y_reald - window_height) + screen_start_from_wheel_real_dist
+
+        # self.x_t = np.concatenate((self.x_t, [5.0]), axis=1)
+
+        # if (((x_r >= (self.x_t[0] - self.pos_err)) || (x_r < (self.x_t[0] + self.pos_err))) && ((y_r >= (self.y_t[0] - self.pos_err)) || (y_r < (self.y_t[0] + self.pos_err)))):
+        #     self.x_t = np.delete(self.x_t, 0)
+        #     self.y_t = np.delete(self.y_t, 0)
+
+        #     self.y_t = np.append(self.y_t, self.y_t[self.step - 2] + (self.window_height / self.step))
+        #     self.x_t = np.append(self.x_t, centerx[(int)self.y_t[self.step - 1]])
+
+            
+
+        #     # publish(x_t, y_t)
+
+        # print(self.y_t)
+
+
+            
+
+        # for i in range(0, step):
+
+
+        # pos_1_y_reald = self.window_height / step
+
+
+
+
+        # sampling_rate = 5 #Hz
+
+        # self.counter %= sampling_rate
+        # if self.counter == 0:
+        #     self.center_samples = np.zeros([sampling_rate, centerx.shape[0]])
+        
+        # self.center_samples[self.counter, :centerx.shape[0]] = centerx
+
+        # if self.counter == (sampling_rate - 1):
+        #     self.center_samples_mean = np.mean(self.center_samples, axis = 0)
+        #     # print(self.center_samples)
+        #     # print(self.center_samples_mean)
+                       
+
+        #     self.center_samples_var = np.subtract(self.center_samples, self.center_samples_mean)
+        #     # print(self.center_samples_var)
+
+        #     # np.argmin(self.center_samples_mean)
+        #     # print( np.argmin(self.center_samples_var, axis=0))
+
+        #     self.centerx_new = 
+
+        self.counter += 1
+
+        
+
+
+            # self.center_samples = np.copy(centerx)
+# >>> import numpy as np
+# >>> a = np.arange(9)
+# >>> a = a.reshape((3, 3))
+# >>> b = np.zeros((5, 5))
+# >>> b[1:4, 1:4] = a
+# >>> b
+# array([[ 0.,  0.,  0.,  0.,  0.],
+#        [ 0.,  0.,  1.,  2.,  0.],
+#        [ 0.,  3.,  4.,  5.,  0.],
+#        [ 0.,  6.,  7.,  8.,  0.],
+#        [ 0.,  0.,  0.,  0.,  0.]])
+
+# >>> b[1:4,1:4] = a + 1  # If you really meant `[1, 2, ..., 9]`
+# >>> b
+# array([[ 0.,  0.,  0.,  0.,  0.],
+#        [ 0.,  1.,  2.,  3.,  0.],
+#        [ 0.,  4.,  5.,  6.,  0.],
+#        [ 0.,  7.,  8.,  9.,  0.],
+#        [ 0.,  0.,  0.,  0.,  0.]])
+
+        # center_samples
+
+        # print(self.center_samples)
+        # print(centerx)
+
+        # print(centerx.shape)
+        # rospy.loginfo("%d", centerx.shape(0))
+
+        # centerx = np.mean([left_fitx, right_fitx], axis=0)
+
+                # self.counter += 1
+        # if self.counter % 3 != 0:
+        #     return
+
+        x_reald = 1
+        y_reald = 1
+
+        x_d_new = self.d_ppx * (x_reald - self.window_width / 2.)
+        y_d_new = -self.d_ppy * (y_reald - self.window_height) + self.screen_start_from_wheel_real_dist
 
         theta_p_new = -math.acos(x_d_new / math.sqrt(x_d_new ** 2 + y_d_new ** 2))
-        theta_a_new = theta_p_new - self.now_yaw
+        theta_a_new = theta_p_new - theta_r
 
         # rospy.loginfo("x_d_new : %f", x_d_new)
         # rospy.loginfo("theta p : %f a : %f", theta_p_new, theta_a_new)
 
-        x_t_new = self.now_pos_x - math.sqrt((x_d_new ** 2 + y_d_new ** 2) / ((math.tan(theta_a_new) ** 2 + 1)))
-        y_t_new = self.now_pos_y + (x_t_new - self.now_pos_x) * math.tan(theta_a_new)
+        x_t_new = x_r - math.sqrt((x_d_new ** 2 + y_d_new ** 2) / (math.tan(theta_a_new) ** 2 + 1))
+        y_t_new = y_r + (x_t_new - x_r) * math.tan(theta_a_new)
 
         # rospy.loginfo("now_pos_x : %d  now_pos_y : %d", self.now_pos_x, self.now_pos_y)
 
-        rospy.loginfo("%d %d", x_t_new, y_t_new)
+        # rospy.loginfo("%d %d", x_t_new, y_t_new)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
 
@@ -436,12 +561,12 @@ class DetectLane():
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        Hue_l = 7
-        Hue_h = 84
-        Saturation_l = 7
-        Saturation_h = 58
-        Lightness_l = 112
-        Lightness_h = 255
+        Hue_l = self.Hue_l_white
+        Hue_h = self.Hue_h_white
+        Saturation_l = self.Saturation_l_white
+        Saturation_h = self.Saturation_h_white
+        Lightness_l = self.Lightness_l_white
+        Lightness_h = self.Lightness_h_white
 
         if self.showing_images == "on":
             cv2.namedWindow('mask_white')
@@ -476,18 +601,30 @@ class DetectLane():
             cv2.imshow('mask_white',mask), cv2.waitKey(1)
         # cv2.imshow('res_white',res), cv2.waitKey(1)
 
-        return mask
+        fraction_num = np.count_nonzero(mask)
+
+        if fraction_num > 35000:
+            if self.Lightness_l_white < 250:
+                self.Lightness_l_white += 1
+        elif fraction_num < 5000:
+            if self.Lightness_l_white > 10:
+                self.Lightness_l_white -= 1
+        
+        # print(self.Lightness_l_white)
+        # print(fraction_num)
+
+        return fraction_num, mask
 
     def maskYellowLane(self, image):
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        Hue_l = 30
-        Hue_h = 115
-        Saturation_l = 79
-        Saturation_h = 255
-        Lightness_l = 130
-        Lightness_h = 255
+        Hue_l = self.Hue_l_yellow
+        Hue_h = self.Hue_h_yellow
+        Saturation_l = self.Saturation_l_yellow
+        Saturation_h = self.Saturation_h_yellow
+        Lightness_l = self.Lightness_l_yellow
+        Lightness_h = self.Lightness_h_yellow
 
         if self.showing_images == "on":
             cv2.namedWindow('mask_yellow')
@@ -521,7 +658,16 @@ class DetectLane():
             cv2.imshow('mask_yellow',mask), cv2.waitKey(1)
         # cv2.imshow('res_yellow',res), cv2.waitKey(1)
 
-        return mask
+
+        fraction_num = np.count_nonzero(mask)
+
+        # if fraction_num > 40000:
+        #     Lightness_l_yellow += 5
+        # elif fraction_num < 40000:
+        #     Lightness_l_yellow -= 5
+        # print(fraction_num)
+
+        return fraction_num, mask
 
     def fit_from_lines(self, left_fit, right_fit, img_w):
         # Assume you now have a new warped binary image
@@ -869,29 +1015,31 @@ class DetectLane():
 
         result = cv2.addWeighted(result, 1, color_warp_lines, 1, 0)
 
-        # # ----- Radius Calculation ------ #
+        # ----- Radius Calculation ------ #
 
-        # img_height = img.shape[0]
-        # y_eval = img_height
+        img_height = img.shape[0]
+        y_eval = img_height
 
-        # ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
-        # xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
+        ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
+        xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
 
-        # ploty = np.linspace(0, img_height - 1, img_height)
-        # # Fit new polynomials to x,y in world space
-        # left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
-        # right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
+        ploty = np.linspace(0, img_height - 1, img_height)
+        # Fit new polynomials to x,y in world space
+        left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
+        right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
 
-        # # Calculate the new radii of curvature
-        # left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
-        #     2 * left_fit_cr[0])
+        # Calculate the new radii of curvature
+        left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+            2 * left_fit_cr[0])
 
-        # right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
-        #     2 * right_fit_cr[0])
+        right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+            2 * right_fit_cr[0])
 
         # radius = round((float(left_curverad) + float(right_curverad))/2.,2)
 
-        # # ----- Off Center Calculation ------ #
+        rospy.loginfo("left curverad : %f right curverad : %f", left_curverad, right_curverad)
+
+        # ----- Off Center Calculation ------ #
 
         # lane_width = (right_fit[2] - left_fit[2]) * xm_per_pix
         # center = (right_fit[2] - left_fit[2]) / 2
@@ -900,10 +1048,10 @@ class DetectLane():
 
         # off_center = round((center - img.shape[0] / 2.) * xm_per_pix,2)
 
-        # # --- Print text on screen ------ #
-        # #if radius < 5000.0:
+        # --- Print text on screen ------ #
+        #if radius < 5000.0:
         # text = "radius = %s [m]\noffcenter = %s [m]" % (str(radius), str(off_center))
-        # #text = "radius = -- [m]\noffcenter = %s [m]" % (str(off_center))
+        #text = "radius = -- [m]\noffcenter = %s [m]" % (str(off_center))
 
         # rospy.loginfo("%s", text)
 

@@ -104,6 +104,9 @@ class DetectLane():
         if mov_avg_right.shape[0] > 1000:
             mov_avg_right = mov_avg_right[0:MOV_AVG_LENGTH]
 
+            
+        centerx = np.mean([left_fitx, right_fitx], axis=0)
+        print(centerx.item(300))
 
         # t_fit = time.time() - t_fit0
 

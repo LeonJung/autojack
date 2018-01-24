@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 #Special thanks to Roger Sacchelli (https://github.com/rogersacchelli/Lanes-Detection-with-OpenCV)
+#(http://answers.opencv.org/question/75510/how-to-make-auto-adjustmentsbrightness-and-contrast-for-image-android-opencv-image-correction/)
 
 import rospy
 import cv2
