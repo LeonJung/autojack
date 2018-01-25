@@ -37,7 +37,7 @@ class DetectLane():
         else:
             self._sub = rospy.Subscriber('/image_birdseye', Image, self.callback, queue_size = 1)
 
-        self._sub2 = rospy.Subscriber('/odom', Odometry, self.callback2, queue_size=1)
+        # self._sub2 = rospy.Subscriber('/odom', Odometry, self.callback2, queue_size=1)
 
         # There are 4 Publishers
         # pub1 : calibrated image as compressed image
@@ -84,6 +84,10 @@ class DetectLane():
         self.Saturation_h_yellow = 255
         self.Lightness_l_yellow = 130
         self.Lightness_h_yellow = 255
+
+        self.reliability_white_line = 100
+        self.reliability_yellow_line = 100
+
 
     def callback2(self, odom_msg):
         self.now_pos_x = odom_msg.pose.pose.position.y * 1000.
@@ -186,331 +190,198 @@ class DetectLane():
             cv2.imshow('lanes', cv_lanes), cv2.waitKey(1)
 
         try:
-            # desired_center, left_fit, right_fit = self.fit_from_lines(left_fit, right_fit, cv_lanes)
-            left_fitx, left_fit = self.fit_from_lines2(left_fit, cv_white_lane, 'left')
-            right_fitx, right_fit = self.fit_from_lines2(right_fit, cv_yellow_lane, 'right')
+            if white_fraction > 3000:
+                left_fitx, left_fit = self.fit_from_lines2(left_fit, cv_white_lane, 'left')
+                self.mov_avg_left = np.append(self.mov_avg_left,np.array([left_fit]), axis=0)
 
-            mov_avg_left = np.append(mov_avg_left,np.array([left_fit]), axis=0)
-            mov_avg_right = np.append(mov_avg_right,np.array([right_fit]), axis=0)
+            if yellow_fraction > 3000:
+                right_fitx, right_fit = self.fit_from_lines2(right_fit, cv_yellow_lane, 'right')
+                self.mov_avg_right = np.append(self.mov_avg_right,np.array([right_fit]), axis=0)
 
         except:
-            left_fitx, left_fit = self.sliding_windown2(cv_white_lane, 'left')
-            right_fitx, right_fit = self.sliding_windown2(cv_yellow_lane, 'right')
+            if white_fraction > 3000:
+                left_fitx, left_fit = self.sliding_windown2(cv_white_lane, 'left')
+                self.mov_avg_left = np.array([left_fit])
 
-            mov_avg_left = np.array([left_fit])
-            mov_avg_right = np.array([right_fit])
+            if yellow_fraction > 3000:
+                right_fitx, right_fit = self.sliding_windown2(cv_yellow_lane, 'right')
+                self.mov_avg_right = np.array([right_fit])
 
         MOV_AVG_LENGTH = 5
 
-        left_fit = np.array([np.mean(mov_avg_left[::-1][:, 0][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_left[::-1][:, 1][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_left[::-1][:, 2][0:MOV_AVG_LENGTH])])
-        right_fit = np.array([np.mean(mov_avg_right[::-1][:, 0][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_right[::-1][:, 1][0:MOV_AVG_LENGTH]),
-                             np.mean(mov_avg_right[::-1][:, 2][0:MOV_AVG_LENGTH])])
-
-        if mov_avg_left.shape[0] > 1000:
-            mov_avg_left = mov_avg_left[0:MOV_AVG_LENGTH]
-        if mov_avg_right.shape[0] > 1000:
-            mov_avg_right = mov_avg_right[0:MOV_AVG_LENGTH]
+        left_fit = np.array([np.mean(self.mov_avg_left[::-1][:, 0][0:MOV_AVG_LENGTH]),
+                            np.mean(self.mov_avg_left[::-1][:, 1][0:MOV_AVG_LENGTH]),
+                            np.mean(self.mov_avg_left[::-1][:, 2][0:MOV_AVG_LENGTH])])
+        right_fit = np.array([np.mean(self.mov_avg_right[::-1][:, 0][0:MOV_AVG_LENGTH]),
+                            np.mean(self.mov_avg_right[::-1][:, 1][0:MOV_AVG_LENGTH]),
+                            np.mean(self.mov_avg_right[::-1][:, 2][0:MOV_AVG_LENGTH])])
 
 
+        if self.mov_avg_left.shape[0] > 1000:
+            self.mov_avg_left = self.mov_avg_left[0:MOV_AVG_LENGTH]
 
-        centerx = np.mean([left_fitx, right_fitx], axis=0)
+        if self.mov_avg_right.shape[0] > 1000:
+            self.mov_avg_right = self.mov_avg_right[0:MOV_AVG_LENGTH]
+
+        
+
+        # Create an image to draw the lines on
+        warp_zero = np.zeros_like(cv_lanes).astype(np.uint8)
+        color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+        color_warp_lines = np.dstack((warp_zero, warp_zero, warp_zero))
+        #color_warp_center = np.dstack((warp_zero, warp_zero, warp_zero))
+
+        ploty = np.linspace(0, cv_image.shape[0] - 1, cv_image.shape[0])
+
+        if white_fraction > 3000:
+            pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+            cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
+        
+        if yellow_fraction > 3000:
+            pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+            cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+
+        if self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
+            if white_fraction > 3000 and yellow_fraction > 3000:
+                centerx = np.mean([left_fitx, right_fitx], axis=0)
+                pts = np.hstack((pts_left, pts_right))
+                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+                # Draw the lane onto the warped blank image
+                cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+
+            if white_fraction > 3000 and yellow_fraction <= 3000:
+                centerx = np.add(left_fitx, 320)
+                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+            if white_fraction <= 3000 and yellow_fraction > 3000:
+                centerx = np.subtract(right_fitx, 320)
+                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+        elif self.reliability_white_line <= 50 and self.reliability_yellow_line > 50:
+            centerx = np.subtract(right_fitx, 320)
+            pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+            cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+        elif self.reliability_white_line > 50 and self.reliability_yellow_line <= 50:
+            centerx = np.add(left_fitx, 320)
+            pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+            cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+        else:
+            # TODO: go straight
+            pass
+
+        # if white_fraction > 3000:
+        #     pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+        #     cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
+        
+        # if yellow_fraction > 3000:
+        #     pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+        #     cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+
+        # if white_fraction > 3000 and yellow_fraction > 3000:
+        #     centerx = np.mean([left_fitx, right_fitx], axis=0)
+        #     pts = np.hstack((pts_left, pts_right))
+        #     pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+        #     cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+        #     # Draw the lane onto the warped blank image
+        #     cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+
+        # if white_fraction > 3000 and yellow_fraction <= 3000:
+        #     centerx = np.add(left_fitx, 300)
+        #     pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+        #     cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+        # if white_fraction <= 3000 and yellow_fraction > 3000:
+        #     centerx = np.subtract(right_fitx, 300)
+        #     pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+        #     cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+
+
+        # Combine the result with the original image
+        final = cv2.addWeighted(cv_image, 1, color_warp, 0.2, 0)
+
+
+
+        if self.showing_images == "on":
+            cv2.imshow('color_warp_lines', color_warp_lines), cv2.waitKey(1)
+
+        final = cv2.addWeighted(final, 1, color_warp_lines, 1, 0)
+
+        # ----- Radius Calculation ------ #
+
+        # img_height = img.shape[0]
+        # y_eval = img_height
+
+        # ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
+        # xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
+
+        # ploty = np.linspace(0, img_height - 1, img_height)
+        # # Fit new polynomials to x,y in world space
+        # left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
+        # # right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
+
+        # # Calculate the new radii of curvature
+        # left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        #     2 * left_fit_cr[0])
+
+        # # right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        # #     2 * right_fit_cr[0])
+
+        # # radius = round((float(left_curverad) + float(right_curverad))/2.,2)
+
+        # rospy.loginfo("left curverad : %f", left_curverad)
+
+
+        # rospy.loginfo("left curverad : %f right curverad : %f", left_curverad, right_curverad)
+
+        # ----- Off Center Calculation ------ #
+
+        # lane_width = (right_fit[2] - left_fit[2]) * xm_per_pix
+        # center = (right_fit[2] - left_fit[2]) / 2
+        # off_left = (center - left_fit[2]) * xm_per_pix
+        # off_right = -(right_fit[2] - center) * xm_per_pix
+
+        # off_center = round((center - img.shape[0] / 2.) * xm_per_pix,2)
+
+        # --- Print text on screen ------ #
+        #if radius < 5000.0:
+        # text = "radius = %s [m]\noffcenter = %s [m]" % (str(radius), str(off_center))
+        #text = "radius = -- [m]\noffcenter = %s [m]" % (str(off_center))
+
+        # rospy.loginfo("%s", text)
+
+        # for i, line in enumerate(text.split('\n')):
+        #     i = 50 + 20 * i
+        #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
+
+
+
+
+        # centerx = np.mean([left_fitx, right_fitx], axis=0)
 
 
         # t_fit = time.time() - t_fit0
 
         # t_draw0 = time.time()
-        if self.showing_final_image == "on":
-            final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
+        # if self.showing_final_image == "on":
+            # final = self.draw_lines2(cv_image, cv_lanes, left_fit, right_fit, white_fraction, yellow_fraction)
+            # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit)
         # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit, perspective=[src,dst])
-
-
-######################################################## test
-
-        x_r = self.now_pos_x
-        y_r = self.now_pos_y
-        theta_r = self.now_yaw
-
-        # x_t = 0.
-        # y_t = 380.
-
-
-
-        # theta_a = (math.atan2((y_t - y_r), (x_t - x_r)))
-        # theta_p = theta_a + theta_r
-
-        # print(math.degrees(theta_a))
-        # print(math.degrees(self.now_yaw))
-        # print(math.degrees(theta_p))
-
-        # rospy.loginfo("%d", (int)((x_t - x_r) ** 2 + (y_t - y_r) ** 2))
-
-        # x_d = -math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.cos(theta_p)
-        # y_d = math.sqrt((x_t - x_r) ** 2 + (y_t - y_r) ** 2) * math.sin(theta_p)
-
-
-
-        # x_reald = x_d / self.d_ppx + self.window_width / 2.
-        # y_reald = self.window_height - (y_d - self.screen_start_from_wheel_real_dist) / self.d_ppy
-
-        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
-
-##########################################################
-
-
-        # self.x_t = np.concatenate((self.x_t, [5.0]), axis=1)
-
-        # if (((x_r >= (self.x_t[0] - self.pos_err)) || (x_r < (self.x_t[0] + self.pos_err))) && ((y_r >= (self.y_t[0] - self.pos_err)) || (y_r < (self.y_t[0] + self.pos_err)))):
-        #     self.x_t = np.delete(self.x_t, 0)
-        #     self.y_t = np.delete(self.y_t, 0)
-
-        #     self.y_t = np.append(self.y_t, self.y_t[self.step - 2] + (self.window_height / self.step))
-        #     self.x_t = np.append(self.x_t, centerx[(int)self.y_t[self.step - 1]])
-
-            
-
-        #     # publish(x_t, y_t)
-
-        # print(self.y_t)
-
-
-            
-
-        # for i in range(0, step):
-
-
-        # pos_1_y_reald = self.window_height / step
-
-
-
-
-        # sampling_rate = 5 #Hz
-
-        # self.counter %= sampling_rate
-        # if self.counter == 0:
-        #     self.center_samples = np.zeros([sampling_rate, centerx.shape[0]])
-        
-        # self.center_samples[self.counter, :centerx.shape[0]] = centerx
-
-        # if self.counter == (sampling_rate - 1):
-        #     self.center_samples_mean = np.mean(self.center_samples, axis = 0)
-        #     # print(self.center_samples)
-        #     # print(self.center_samples_mean)
-                       
-
-        #     self.center_samples_var = np.subtract(self.center_samples, self.center_samples_mean)
-        #     # print(self.center_samples_var)
-
-        #     # np.argmin(self.center_samples_mean)
-        #     # print( np.argmin(self.center_samples_var, axis=0))
-
-        #     self.centerx_new = 
-
-        self.counter += 1
-
-        
-
-
-            # self.center_samples = np.copy(centerx)
-# >>> import numpy as np
-# >>> a = np.arange(9)
-# >>> a = a.reshape((3, 3))
-# >>> b = np.zeros((5, 5))
-# >>> b[1:4, 1:4] = a
-# >>> b
-# array([[ 0.,  0.,  0.,  0.,  0.],
-#        [ 0.,  0.,  1.,  2.,  0.],
-#        [ 0.,  3.,  4.,  5.,  0.],
-#        [ 0.,  6.,  7.,  8.,  0.],
-#        [ 0.,  0.,  0.,  0.,  0.]])
-
-# >>> b[1:4,1:4] = a + 1  # If you really meant `[1, 2, ..., 9]`
-# >>> b
-# array([[ 0.,  0.,  0.,  0.,  0.],
-#        [ 0.,  1.,  2.,  3.,  0.],
-#        [ 0.,  4.,  5.,  6.,  0.],
-#        [ 0.,  7.,  8.,  9.,  0.],
-#        [ 0.,  0.,  0.,  0.,  0.]])
-
-        # center_samples
-
-        # print(self.center_samples)
-        # print(centerx)
-
-        # print(centerx.shape)
-        # rospy.loginfo("%d", centerx.shape(0))
-
-        # centerx = np.mean([left_fitx, right_fitx], axis=0)
-
-                # self.counter += 1
-        # if self.counter % 3 != 0:
-        #     return
-
-        x_reald = 1
-        y_reald = 1
-
-        x_d_new = self.d_ppx * (x_reald - self.window_width / 2.)
-        y_d_new = -self.d_ppy * (y_reald - self.window_height) + self.screen_start_from_wheel_real_dist
-
-        theta_p_new = -math.acos(x_d_new / math.sqrt(x_d_new ** 2 + y_d_new ** 2))
-        theta_a_new = theta_p_new - theta_r
-
-        # rospy.loginfo("x_d_new : %f", x_d_new)
-        # rospy.loginfo("theta p : %f a : %f", theta_p_new, theta_a_new)
-
-        x_t_new = x_r - math.sqrt((x_d_new ** 2 + y_d_new ** 2) / (math.tan(theta_a_new) ** 2 + 1))
-        y_t_new = y_r + (x_t_new - x_r) * math.tan(theta_a_new)
-
-        # rospy.loginfo("now_pos_x : %d  now_pos_y : %d", self.now_pos_x, self.now_pos_y)
-
-        # rospy.loginfo("%d %d", x_t_new, y_t_new)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
-
-        # rospy.loginfo("%d %d", x_reald, y_reald)
-
-        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
-
-
-        # x = 500
-        # # y = 0
-
-        # y = 380. # real
-        # screen_end_from_wheel_real_dist = 320.
-        # real_dist_per_pix_y = 90. / 29.
-        
-        # # print(self.now_pos_x)
-
-        # real_point_x = x
-        # in_picture_point_y = real_dist_per_pix_y * -(y - screen_end_from_wheel_real_dist - self.now_pos_x)
-
-        # print(self.now_pos_x)
-        # print(in_picture_point_y)
-
-        # cv2.circle(final,(real_point_x, (int)(in_picture_point_y)), 21, (0,0,255), -1)
-
-
-        # cv2.circle(final,(real_point_x, (int)((29. ))), 21, (0,0,255), -1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        # print(y_reald)
-
-
-        # cv2.circle(final,((int)(x_reald), (int)(y_reald)), 21, (0,0,255), -1)
-
-
-        # theta_a = math.acos(x_d / math.sqrt((x_d ** 2) + (y_d ** 2)))
-
-
-
-        # l = math.sin(math.radians(30.0))
-
-        # l = math.sin(math.pi / 2.)
-
-        # print(l)
-        # print(self.now_yaw)
-
-
-        # cv2.circle(final,((int)(x_d_init), (int)(y_d_init)), 21, (0,0,255), -1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#######################################################
-
-
-
-        # x = 500
-        # # y = 0
-
-        # y = 380. # real
-        # screen_end_from_wheel_real_dist = 320.
-        # real_dist_per_pix_y = 90. / 29.
-        
-        # # print(self.now_pos_x)
-
-        # real_point_x = x
-        # in_picture_point_y = real_dist_per_pix_y * -(y - screen_end_from_wheel_real_dist - self.now_pos_x)
-
-        # print(self.now_pos_x)
-        # print(in_picture_point_y)
-
-        # cv2.circle(final,(real_point_x, (int)(in_picture_point_y)), 21, (0,0,255), -1)
-
-
-        # cv2.circle(final,(real_point_x, (int)((29. ))), 21, (0,0,255), -1)
-
-
-
-#######################################################
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -526,7 +397,9 @@ class DetectLane():
             # self._pub1.publish(msg_final_img)
 
             msg_desired_center = Float64()
-            msg_desired_center.data = desired_center.item(450)
+            msg_desired_center.data = centerx.item(450)
+
+            # print(msg_desired_center.data)
             # msg_desired_center.data = desired_center.item(300)
 
             # msg_off_center = Float64()
@@ -546,12 +419,15 @@ class DetectLane():
             # self._pub2.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
 
             msg_desired_center = Float64()
-            # msg_desired_center.data = desired_center.item(300)
+
+            msg_desired_center.data = centerx.item(350)
+
+            # print(msg_desired_center.data)
 
             # msg_off_center = Float64()
             # msg_off_center.data = off_center
 
-            # self._pub3.publish(msg_desired_center)
+            self._pub3.publish(msg_desired_center)
             # self._pub4.publish(msg_off_center)
 
             # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
@@ -599,7 +475,7 @@ class DetectLane():
         # cv2.imshow('frame_white',image), cv2.waitKey(1)
         if self.showing_images == "on":
             cv2.imshow('mask_white',mask), cv2.waitKey(1)
-        # cv2.imshow('res_white',res), cv2.waitKey(1)
+            # cv2.imshow('res_white',res), cv2.waitKey(1)
 
         fraction_num = np.count_nonzero(mask)
 
@@ -607,9 +483,27 @@ class DetectLane():
             if self.Lightness_l_white < 250:
                 self.Lightness_l_white += 1
         elif fraction_num < 5000:
-            if self.Lightness_l_white > 10:
+            if self.Lightness_l_white > 50:
                 self.Lightness_l_white -= 1
+
+        how_much_short = 0
+
+        for i in range(0, 600):
+            if np.count_nonzero(mask[i,::]) > 0:
+                how_much_short += 1
+
+        how_much_short = 600 - how_much_short
+
+        if how_much_short > 100:
+            if self.reliability_white_line >= 5:
+                self.reliability_white_line -= 5
+        elif how_much_short <= 100:
+            if self.reliability_white_line <= 99:
+                self.reliability_white_line += 1
+
         
+        rospy.loginfo("reliability_white_line : %d, lack of points : %d", self.reliability_white_line, how_much_short)
+
         # print(self.Lightness_l_white)
         # print(fraction_num)
 
@@ -666,6 +560,25 @@ class DetectLane():
         # elif fraction_num < 40000:
         #     Lightness_l_yellow -= 5
         # print(fraction_num)
+
+
+
+        how_much_short = 0
+
+        for i in range(0, 600):
+            if np.count_nonzero(mask[i,::]) > 0:
+                how_much_short += 1
+        
+        how_much_short = 600 - how_much_short
+
+        if how_much_short > 100:
+            if self.reliability_yellow_line >= 5:
+                self.reliability_yellow_line -= 5
+        elif how_much_short <= 100:
+            if self.reliability_yellow_line <= 99:
+                self.reliability_yellow_line += 1
+
+        rospy.loginfo("reliability_yellow_line : %d, lack of points : %d", self.reliability_yellow_line, how_much_short)
 
         return fraction_num, mask
 
@@ -971,6 +884,95 @@ class DetectLane():
             plt.show()
 
         return centerx, left_fit, right_fit
+
+    def draw_lines2(self, img, img_w, left_fit, right_fit, white_fraction, yellow_fraction):
+        # Create an image to draw the lines on
+        warp_zero = np.zeros_like(img_w).astype(np.uint8)
+        color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+        color_warp_lines = np.dstack((warp_zero, warp_zero, warp_zero))
+        #color_warp_center = np.dstack((warp_zero, warp_zero, warp_zero))
+
+        ploty = np.linspace(0, img.shape[0] - 1, img.shape[0])
+
+        if white_fraction > 3000:
+            left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
+            pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+            cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
+        
+        if yellow_fraction > 3000:
+            right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
+            pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+            cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+
+        if white_fraction > 3000 and yellow_fraction > 3000:
+            centerx = np.mean([left_fitx, right_fitx], axis=0)
+            pts = np.hstack((pts_left, pts_right))
+            pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+            cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
+
+            # Draw the lane onto the warped blank image
+            cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
+
+            # Combine the result with the original image
+            result = cv2.addWeighted(img, 1, color_warp, 0.2, 0)
+
+
+
+        if self.showing_images == "on":
+            cv2.imshow('color_warp_lines', color_warp_lines), cv2.waitKey(1)
+
+        result = cv2.addWeighted(result, 1, color_warp_lines, 1, 0)
+
+        # ----- Radius Calculation ------ #
+
+        # img_height = img.shape[0]
+        # y_eval = img_height
+
+        # ym_per_pix = 0.029 / 90.  # meters per pixel in y dimension
+        # xm_per_pix = 0.029 / 57.  # meters per pixel in x dimension
+
+        # ploty = np.linspace(0, img_height - 1, img_height)
+        # # Fit new polynomials to x,y in world space
+        # left_fit_cr = np.polyfit(ploty * ym_per_pix, left_fitx * xm_per_pix, 2)
+        # # right_fit_cr = np.polyfit(ploty * ym_per_pix, right_fitx * xm_per_pix, 2)
+
+        # # Calculate the new radii of curvature
+        # left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        #     2 * left_fit_cr[0])
+
+        # # right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        # #     2 * right_fit_cr[0])
+
+        # # radius = round((float(left_curverad) + float(right_curverad))/2.,2)
+
+        # rospy.loginfo("left curverad : %f", left_curverad)
+
+
+        # rospy.loginfo("left curverad : %f right curverad : %f", left_curverad, right_curverad)
+
+        # ----- Off Center Calculation ------ #
+
+        # lane_width = (right_fit[2] - left_fit[2]) * xm_per_pix
+        # center = (right_fit[2] - left_fit[2]) / 2
+        # off_left = (center - left_fit[2]) * xm_per_pix
+        # off_right = -(right_fit[2] - center) * xm_per_pix
+
+        # off_center = round((center - img.shape[0] / 2.) * xm_per_pix,2)
+
+        # --- Print text on screen ------ #
+        #if radius < 5000.0:
+        # text = "radius = %s [m]\noffcenter = %s [m]" % (str(radius), str(off_center))
+        #text = "radius = -- [m]\noffcenter = %s [m]" % (str(off_center))
+
+        # rospy.loginfo("%s", text)
+
+        # for i, line in enumerate(text.split('\n')):
+        #     i = 50 + 20 * i
+        #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
+        return result
+
 
     def draw_lines(self, img, img_w, left_fit, right_fit):
         # Create an image to draw the lines on

@@ -49,10 +49,10 @@ class PathFollowing():
             lastError = 0
 
 
-        error = center - 450
+        error = center - 470#450
 
-        Kp = 0.001
-        Kd = 0.0005
+        Kp = 0.0034#0.0033#0.003#0.001
+        Kd = 0.003#0.003#0.001#0.0005
 
         angular_z = Kp * error + Kd * (error - lastError)
         lastError = error
@@ -79,7 +79,7 @@ class PathFollowing():
         
 
         twist = Twist()
-        twist.linear.x = 0.16#0.04#0.030
+        twist.linear.x = 0.14#0.12#0.08#0.04#
         twist.linear.y = 0
         twist.linear.z = 0
         twist.angular.x = 0
