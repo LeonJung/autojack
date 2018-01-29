@@ -8,17 +8,12 @@ import numpy as np
 from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import Float64
-from sensor_msgs.msg import Image
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import Image, CompressedImage
 import tf
-
-
-from nav_msgs.msg import Odometry
 
 import matplotlib.pyplot as plt
 
 import math
-
 
 def callback(x):
     pass
@@ -26,32 +21,25 @@ def callback(x):
 class DetectLane():
     def __init__(self):
         self.showing_plot_track = "off"
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
+        self.showing_images = "on" # you can choose showing images or not by "on", "off"
 
         self.showing_final_image = "on"
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "raw" # you can choose image type "compressed", "raw"
 
-        if self.selecting_sub_image == "compressed":
-            self._sub = rospy.Subscriber('/image_birdseye_compressed', CompressedImage, self.callback, queue_size = 1)
-        else:
-            self._sub = rospy.Subscriber('/image_birdseye', Image, self.callback, queue_size = 1)
+        if self.sub_image_original_type == "compressed":
+            # subscribes compressed image
+            self._sub = rospy.Subscriber('/detect/image/compressed', CompressedImage, self.callback, queue_size = 1)
+        elif self.sub_image_original_type == "raw":
+            # subscribes raw image
+            self._sub = rospy.Subscriber('/detect/image', Image, self.callback, queue_size = 1)
 
-        # self._sub2 = rospy.Subscriber('/odom', Odometry, self.callback2, queue_size=1)
-
-        # There are 4 Publishers
-        # pub1 : calibrated image as compressed image
-        # pub2 : Bird's eye view image as compressed image
-        # pub3 : calibrated image as raw image
-        # pub4 : Bird's eye view image as raw image
-        # if you do not want to publish some topic, delete pub definition in __init__ function and publishing process in callback function
         if self.selecting_pub_image == "compressed":
-            self._pub1 = rospy.Publisher('/image_lanes_compressed', CompressedImage, queue_size = 1)
+            self._pub1 = rospy.Publisher('/detect/image_lane/compressed', CompressedImage, queue_size = 1)
         elif self.selecting_pub_image == "raw":
-            self._pub2 = rospy.Publisher('/image_lanes', Image, queue_size = 1)
+            self._pub2 = rospy.Publisher('/detect/image_lane', Image, queue_size = 1)
 
         self._pub3 = rospy.Publisher('/lane/desired_center', Float64, queue_size = 1)
-        # self._pub4 = rospy.Publisher('/lane/off_center', Float64, queue_size = 1)
 
         self.cvBridge = CvBridge()
 
@@ -104,76 +92,9 @@ class DetectLane():
         if self.selecting_sub_image == "compressed":
             #converting compressed image to opencv image
             np_arr = np.fromstring(image_msg.data, np.uint8)
-            cv_image22 = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         elif self.selecting_sub_image == "raw":
-            cv_image22 = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
-
-        ## New method
-        # TODO : processing speed
-        # TODO : should this get image_to_ground image? or plain image? if it calculates based on plain image, the brightness varies on so much stuffs around
-
-        clip_hist_percent = 1.0
-        
-        hist_size = 256
-        alpha = 0
-        beta = 0
-        min_gray = 0
-        max_gray = 0
-
-        #gray = np.zeros([240, 320], dtype=np.uint8)
-
-        gray = cv2.cvtColor(cv_image22, cv2.COLOR_BGR2GRAY)
-
-        if clip_hist_percent == 0.0:
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(gray)
-        else:
-        # cv2.calcHist(images, channels, mask, histSize, ranges[, hist[, accumulate]])
-            hist = cv2.calcHist([gray], [0], None, [hist_size], [0, hist_size])
-            # hist, bin_edges = np.histogram(gray, normed=True)
-
-            # plt.plot(hist)
-            # plt.xlim([0,256])
-            # plt.show()
-
-        accumulator = np.zeros((hist_size))
-        
-        accumulator[0] = hist[0]
-
-        for i in range(0, hist_size):
-            accumulator[i] = accumulator[i - 1] + hist[i]
-
-        max = accumulator[hist_size - 1]
-
-        # print(max)
-
-        clip_hist_percent *= (max / 100.)
-        clip_hist_percent /= 2.
-
-        min_gray = 0
-        while accumulator[min_gray] < clip_hist_percent:
-            min_gray += 1
-        
-        max_gray = hist_size - 1
-        while accumulator[max_gray] >= (max - clip_hist_percent):
-            max_gray -= 1
-
-        input_range = max_gray - min_gray
-
-        alpha = (hist_size - 1) / input_range
-        beta = -min_gray * alpha
-
-        cv_image = cv2.convertScaleAbs(cv_image22, -1, alpha, beta)
-
-
-
-
-
-
-
-
-
-
-
+            cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
         # copy original image to use in lane finding process
         cv_white_lane = np.copy(cv_image)

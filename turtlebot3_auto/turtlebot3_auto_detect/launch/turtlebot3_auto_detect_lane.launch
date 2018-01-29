@@ -1,0 +1,9 @@
+<launch>
+  <!-- launch turtlebot3_auto_camera_calibration.launch before launch this file -->
+
+  <!-- lane detection -->
+  <node pkg="turtlebot3_auto_camera" type="detect_lane.py" name="detect_lane" output="screen">
+    <remap from="/camera/image" to="/camera/image_projected" />
+    <remap from="/camera/image/compressed" to="/camera/image_projected/compressed" />
+  </node>
+</launch>
