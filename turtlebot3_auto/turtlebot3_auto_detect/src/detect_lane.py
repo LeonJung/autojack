@@ -1,6 +1,23 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-#Special thanks to Roger Sacchelli (https://github.com/rogersacchelli/Lanes-Detection-with-OpenCV)
+################################################################################
+# Copyright 2018 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
+# Author: Ryu Woon Jung (Leon), Roger Sacchelli
 
 import rospy
 import cv2
@@ -21,25 +38,25 @@ def callback(x):
 class DetectLane():
     def __init__(self):
         self.showing_plot_track = "off"
-        self.showing_images = "on" # you can choose showing images or not by "on", "off"
+        self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
         self.showing_final_image = "on"
-        self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
-        self.selecting_pub_image = "raw" # you can choose image type "compressed", "raw"
+        self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
+        self.pub_image_lane_type = "raw" # you can choose image type "compressed", "raw"
 
         if self.sub_image_original_type == "compressed":
             # subscribes compressed image
-            self._sub = rospy.Subscriber('/detect/image/compressed', CompressedImage, self.callback, queue_size = 1)
+            self.sub_image_original = rospy.Subscriber('/detect/image_input/compressed', CompressedImage, self.callback, queue_size = 1)
         elif self.sub_image_original_type == "raw":
             # subscribes raw image
-            self._sub = rospy.Subscriber('/detect/image', Image, self.callback, queue_size = 1)
+            self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.callback, queue_size = 1)
 
-        if self.selecting_pub_image == "compressed":
-            self._pub1 = rospy.Publisher('/detect/image_lane/compressed', CompressedImage, queue_size = 1)
-        elif self.selecting_pub_image == "raw":
-            self._pub2 = rospy.Publisher('/detect/image_lane', Image, queue_size = 1)
+        if self.pub_image_lane_type == "compressed":
+            self.pub_image_lane = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
+        elif self.pub_image_lane_type == "raw":
+            self.pub_image_lane = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
-        self._pub3 = rospy.Publisher('/lane/desired_center', Float64, queue_size = 1)
+        self.pub_lane = rospy.Publisher('/detect/lane', Float64, queue_size = 1)
 
         self.cvBridge = CvBridge()
 
@@ -89,11 +106,11 @@ class DetectLane():
         #     self.counter += 1
         #     return
 
-        if self.selecting_sub_image == "compressed":
+        if self.sub_image_original_type == "compressed":
             #converting compressed image to opencv image
             np_arr = np.fromstring(image_msg.data, np.uint8)
             cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        elif self.selecting_sub_image == "raw":
+        elif self.sub_image_original_type == "raw":
             cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
         # copy original image to use in lane finding process
@@ -111,21 +128,21 @@ class DetectLane():
             cv2.imshow('lanes', cv_lanes), cv2.waitKey(1)
 
         try:
-            if white_fraction > 3000:
-                left_fitx, left_fit = self.fit_from_lines2(left_fit, cv_white_lane, 'left')
+            if yellow_fraction > 3000:
+                left_fitx, left_fit = self.fit_from_lines2(left_fit, cv_yellow_lane, 'left')
                 self.mov_avg_left = np.append(self.mov_avg_left,np.array([left_fit]), axis=0)
 
-            if yellow_fraction > 3000:
-                right_fitx, right_fit = self.fit_from_lines2(right_fit, cv_yellow_lane, 'right')
+            if white_fraction > 3000:
+                right_fitx, right_fit = self.fit_from_lines2(right_fit, cv_white_lane, 'right')
                 self.mov_avg_right = np.append(self.mov_avg_right,np.array([right_fit]), axis=0)
 
         except:
-            if white_fraction > 3000:
-                left_fitx, left_fit = self.sliding_windown2(cv_white_lane, 'left')
+            if yellow_fraction > 3000:
+                left_fitx, left_fit = self.sliding_windown2(cv_yellow_lane, 'left')
                 self.mov_avg_left = np.array([left_fit])
 
-            if yellow_fraction > 3000:
-                right_fitx, right_fit = self.sliding_windown2(cv_yellow_lane, 'right')
+            if white_fraction > 3000:
+                right_fitx, right_fit = self.sliding_windown2(cv_white_lane, 'right')
                 self.mov_avg_right = np.array([right_fit])
 
         MOV_AVG_LENGTH = 5
@@ -154,14 +171,14 @@ class DetectLane():
 
         ploty = np.linspace(0, cv_image.shape[0] - 1, cv_image.shape[0])
 
-        if white_fraction > 3000:
-            pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-            cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
-        
         if yellow_fraction > 3000:
-            pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-            cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+            pts_left = np.array([np.flipud(np.transpose(np.vstack([left_fitx, ploty])))])
+            cv2.polylines(color_warp_lines, np.int_([pts_left]), isClosed=False, color=(0, 0, 255), thickness=25)
 
+        if white_fraction > 3000:
+            pts_right = np.array([np.transpose(np.vstack([right_fitx, ploty]))])
+            cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
+        
         if self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
             if white_fraction > 3000 and yellow_fraction > 3000:
                 centerx = np.mean([left_fitx, right_fitx], axis=0)
@@ -174,25 +191,25 @@ class DetectLane():
                 cv2.fillPoly(color_warp, np.int_([pts]), (0, 255, 0))
 
             if white_fraction > 3000 and yellow_fraction <= 3000:
-                centerx = np.add(left_fitx, 320)
-                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
-
-                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
-
-            if white_fraction <= 3000 and yellow_fraction > 3000:
                 centerx = np.subtract(right_fitx, 320)
                 pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
                 cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
+            if white_fraction <= 3000 and yellow_fraction > 3000:
+                centerx = np.add(left_fitx, 320)
+                pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
+
+                cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
+
         elif self.reliability_white_line <= 50 and self.reliability_yellow_line > 50:
-            centerx = np.subtract(right_fitx, 320)
+            centerx = np.add(left_fitx, 320)
             pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
             cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
         elif self.reliability_white_line > 50 and self.reliability_yellow_line <= 50:
-            centerx = np.add(left_fitx, 320)
+            centerx = np.subtract(right_fitx, 320)
             pts_center = np.array([np.transpose(np.vstack([centerx, ploty]))])
 
             cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
@@ -310,15 +327,15 @@ class DetectLane():
             cv2.imshow('final', final), cv2.waitKey(1)
 
         # publishing calbrated and Bird's eye view as compressed image
-        if self.selecting_pub_image == "compressed":
+        if self.pub_image_lane_type == "compressed":
             # msg_final_img = CompressedImage()
             # msg_final_img.header.stamp = rospy.Time.now()
             # msg_final_img.format = "jpeg"
             # msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
-            # self._pub1.publish(msg_final_img)
+            # self.pub_image_lane.publish(msg_final_img)
 
             msg_desired_center = Float64()
-            msg_desired_center.data = centerx.item(450)
+            msg_desired_center.data = centerx.item(350) # 450
 
             # print(msg_desired_center.data)
             # msg_desired_center.data = desired_center.item(300)
@@ -326,29 +343,29 @@ class DetectLane():
             # msg_off_center = Float64()
             # msg_off_center.data = off_center
 
-            self._pub3.publish(msg_desired_center)
+            self.pub_lane.publish(msg_desired_center)
             # self._pub4.publish(msg_off_center)
 
             # msg_homography = CompressedImage()
             # msg_homography.header.stamp = rospy.Time.now()
             # msg_homography.format = "jpeg"
             # msg_homography.data = np.array(cv2.imencode('.jpg', cv_Homography)[1]).tostring()
-            # self._pub2.publish(msg_homography)
+            # self.pub_image_lane.publish(msg_homography)
 
         # publishing calbrated and Bird's eye view as raw image
-        elif self.selecting_pub_image == "raw":
-            # self._pub2.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
+        elif self.pub_image_lane_type == "raw":
+            # self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
 
             msg_desired_center = Float64()
 
-            msg_desired_center.data = centerx.item(350)
+            msg_desired_center.data = centerx.item(350) # 350
 
             # print(msg_desired_center.data)
 
             # msg_off_center = Float64()
             # msg_off_center.data = off_center
 
-            self._pub3.publish(msg_desired_center)
+            self.pub_lane.publish(msg_desired_center)
             # self._pub4.publish(msg_off_center)
 
             # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
@@ -402,10 +419,10 @@ class DetectLane():
 
         if fraction_num > 35000:
             if self.Lightness_l_white < 250:
-                self.Lightness_l_white += 1
+                self.Lightness_l_white += 5
         elif fraction_num < 5000:
             if self.Lightness_l_white > 50:
-                self.Lightness_l_white -= 1
+                self.Lightness_l_white -= 5
 
         how_much_short = 0
 
@@ -420,7 +437,7 @@ class DetectLane():
                 self.reliability_white_line -= 5
         elif how_much_short <= 100:
             if self.reliability_white_line <= 99:
-                self.reliability_white_line += 1
+                self.reliability_white_line += 5
 
         
         rospy.loginfo("reliability_white_line : %d, lack of points : %d", self.reliability_white_line, how_much_short)
@@ -476,12 +493,13 @@ class DetectLane():
 
         fraction_num = np.count_nonzero(mask)
 
-        # if fraction_num > 40000:
-        #     Lightness_l_yellow += 5
-        # elif fraction_num < 40000:
-        #     Lightness_l_yellow -= 5
-        # print(fraction_num)
 
+        if fraction_num > 35000:
+            if self.Lightness_l_yellow < 250:
+                self.Lightness_l_yellow += 5
+        elif fraction_num < 5000:
+            if self.Lightness_l_yellow > 100:
+                self.Lightness_l_yellow -= 5
 
 
         how_much_short = 0
@@ -497,7 +515,7 @@ class DetectLane():
                 self.reliability_yellow_line -= 5
         elif how_much_short <= 100:
             if self.reliability_yellow_line <= 99:
-                self.reliability_yellow_line += 1
+                self.reliability_yellow_line += 5
 
         rospy.loginfo("reliability_yellow_line : %d, lack of points : %d", self.reliability_yellow_line, how_much_short)
 

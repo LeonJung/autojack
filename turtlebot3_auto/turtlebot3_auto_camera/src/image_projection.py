@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-# Copyright 2017 ROBOTIS CO., LTD.
+# Copyright 2018 ROBOTIS CO., LTD.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ from sensor_msgs.msg import Image,CompressedImage
 class ImageProjection():
     def __init__(self):
         self.trackbar = "off"                   # "on" / "off"
-        self.showing_images = "off"              # "on" / "off"
-        self.selecting_sub_image = "compressed" # "compressed" / "raw"
-        self.selecting_pub_image = "compressed" # "compressed" / "raw"
+        self.showing_images = "off"             # "on" / "off"
+        self.selecting_sub_image = "raw" # "compressed" / "raw"
+        self.selecting_pub_image = "raw" # "compressed" / "raw"
 
         if self.selecting_sub_image == "compressed":
             # subscribes compressed image 

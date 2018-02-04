@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(turtlebot3_auto_camera)
 
+set(OpenCV_DIR /usr/share/OpenCV/)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy

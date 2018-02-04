@@ -1,0 +1,12 @@
+<launch>
+  <!-- launch turtlebot3_auto_camera_pi.launch in the raspberry pi before launch this file -->
+  <!-- launch turtlebot3_bringup pkg - turtlebot3_robot.launch in the raspberry pi before launch this file -->
+
+    <!-- image brightness & contrast compensation of ground-projected image -->
+    <node pkg="turtlebot3_auto_core" type="core.py" name="core" output="screen">
+      <!-- <remap from="/camera/image_input" to="/camera/image_rect_color" />
+      <remap from="/camera/image_input/compressed" to="/camera/image_rect_color/compressed" />
+      <remap from="/camera/image_output" to="/camera/image_compensated" />
+      <remap from="/camera/image_output/compressed" to="/camera/image_compensated/compressed" /> -->
+    </node>
+</launch>

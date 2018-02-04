@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-# Copyright 2017 ROBOTIS CO., LTD.
+# Copyright 2018 ROBOTIS CO., LTD.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,8 +34,8 @@ class ImageCompensation():
         # drs = DynamicReconfigureServer(ImageCompensationParamsConfig, self.cbDRImageCompensationParams)
 
         self.show_image_cv2window = "off"               # "on" / "off"
-        self.sub_image_original_type = "compressed"     # "compressed" / "raw"
-        self.pub_image_compensated_type = "compressed"  # "compressed" / "raw"
+        self.sub_image_original_type = "raw"     # "compressed" / "raw"
+        self.pub_image_compensated_type = "raw"  # "compressed" / "raw"
 
         if self.sub_image_original_type == "compressed":
             # subscribes compressed image 
