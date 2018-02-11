@@ -24,7 +24,7 @@ import cv2
 import numpy as np
 from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
-from std_msgs.msg import Float64
+from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import Image, CompressedImage
 import tf
 
@@ -39,6 +39,7 @@ class DetectLane():
     def __init__(self):
         self.showing_plot_track = "off"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
+        self.showing_trackbar = "off"
 
         self.showing_final_image = "on"
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
@@ -57,6 +58,14 @@ class DetectLane():
             self.pub_image_lane = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
         self.pub_lane = rospy.Publisher('/detect/lane', Float64, queue_size = 1)
+
+        # subscribes state : yellow line reliability
+        self.pub_yellow_line_reliability = rospy.Publisher('/detect/yellow_line_reliability', UInt8, queue_size=1)
+ 
+        # subscribes state : white line reliability
+        self.pub_white_line_reliability = rospy.Publisher('/detect/white_line_reliability', UInt8, queue_size=1)
+ 
+
 
         self.cvBridge = CvBridge()
 
@@ -85,7 +94,7 @@ class DetectLane():
 
         self.Hue_l_yellow = 30
         self.Hue_h_yellow = 115
-        self.Saturation_l_yellow = 79
+        self.Saturation_l_yellow = 100# 79
         self.Saturation_h_yellow = 255
         self.Lightness_l_yellow = 130
         self.Lightness_h_yellow = 255
@@ -382,7 +391,7 @@ class DetectLane():
         Lightness_l = self.Lightness_l_white
         Lightness_h = self.Lightness_h_white
 
-        if self.showing_images == "on":
+        if self.showing_trackbar == "on":
             cv2.namedWindow('mask_white')
             cv2.createTrackbar('Hue_l', 'mask_white', Hue_l, 179, callback)
             cv2.createTrackbar('Hue_h', 'mask_white', Hue_h, 180, callback)
@@ -439,11 +448,12 @@ class DetectLane():
             if self.reliability_white_line <= 99:
                 self.reliability_white_line += 5
 
-        
-        rospy.loginfo("reliability_white_line : %d, lack of points : %d", self.reliability_white_line, how_much_short)
+                
+        # rospy.loginfo("reliability_white_line : %d, lack of points : %d", self.reliability_white_line, how_much_short)
 
-        # print(self.Lightness_l_white)
-        # print(fraction_num)
+        msg_white_line_reliability = UInt8()
+        msg_white_line_reliability.data = self.reliability_white_line
+        self.pub_white_line_reliability.publish(msg_white_line_reliability)
 
         return fraction_num, mask
 
@@ -458,7 +468,7 @@ class DetectLane():
         Lightness_l = self.Lightness_l_yellow
         Lightness_h = self.Lightness_h_yellow
 
-        if self.showing_images == "on":
+        if self.showing_trackbar == "on":
             cv2.namedWindow('mask_yellow')
             cv2.createTrackbar('Hue_l', 'mask_yellow', Hue_l, 179, callback)
             cv2.createTrackbar('Hue_h', 'mask_yellow', Hue_h, 180, callback)
@@ -496,10 +506,10 @@ class DetectLane():
 
         if fraction_num > 35000:
             if self.Lightness_l_yellow < 250:
-                self.Lightness_l_yellow += 5
+                self.Lightness_l_yellow += 20
         elif fraction_num < 5000:
-            if self.Lightness_l_yellow > 100:
-                self.Lightness_l_yellow -= 5
+            if self.Lightness_l_yellow > 90:
+                self.Lightness_l_yellow -= 20
 
 
         how_much_short = 0
@@ -517,7 +527,11 @@ class DetectLane():
             if self.reliability_yellow_line <= 99:
                 self.reliability_yellow_line += 5
 
-        rospy.loginfo("reliability_yellow_line : %d, lack of points : %d", self.reliability_yellow_line, how_much_short)
+        # rospy.loginfo("reliability_yellow_line : %d, lack of points : %d", self.reliability_yellow_line, how_much_short)
+
+        msg_yellow_line_reliability = UInt8()
+        msg_yellow_line_reliability.data = self.reliability_yellow_line
+        self.pub_yellow_line_reliability.publish(msg_yellow_line_reliability)
 
         return fraction_num, mask
 

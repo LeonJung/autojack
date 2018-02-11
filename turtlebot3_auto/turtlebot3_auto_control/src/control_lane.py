@@ -19,31 +19,33 @@ class ControlLane():
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
-        self._sub = rospy.Subscriber('/control/lane', Float64, self.callback, queue_size = 1)
+        self.sub_lane = rospy.Subscriber('/control/lane', Float64, self.callback, queue_size = 1)
 
-        self._pub1 = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
+        self.pub_cmd_vel = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
 
         self.lastError = 0
+
+        rospy.on_shutdown(self.fnShutDown)
 
     def callback(self, desired_center):
         center = desired_center.data
 
         error = center - 500
 
-        MAX_VEL = 0.19
+        MAX_VEL = 0.19#0.19
 
-        Kp = 0.0035
-        Kd = 0.007
+        Kp = 0.0035#0.0035
+        Kd = 0.007#0.007
 
         angular_z = Kp * error + Kd * (error - self.lastError)
         self.lastError = error
 
-        print(center)
+        # print(center)
 
-        print(error)
-        print(self.lastError)
-        print(angular_z)
-        print((1 - error / 500))       
+        # print(error)
+        # print(self.lastError)
+        # print(angular_z)
+        # print((1 - error / 500))       
 
         twist = Twist()
         twist.linear.x = MAX_VEL * ((1 - abs(error) / 500) ** 2) 
@@ -52,8 +54,20 @@ class ControlLane():
         twist.angular.x = 0
         twist.angular.y = 0
         twist.angular.z = -angular_z
-        self._pub1.publish(twist)
+        self.pub_cmd_vel.publish(twist)
 
+
+    def fnShutDown(self):
+        rospy.loginfo("Shutting down. cmd_vel will be 0")
+
+        twist = Twist()
+        twist.linear.x = 0
+        twist.linear.y = 0
+        twist.linear.z = 0
+        twist.angular.x = 0
+        twist.angular.y = 0
+        twist.angular.z = 0
+        self.pub_cmd_vel.publish(twist) 
 
     def main(self):
         rospy.spin()

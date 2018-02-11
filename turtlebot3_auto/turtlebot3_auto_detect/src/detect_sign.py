@@ -31,6 +31,7 @@ import tf
 import matplotlib.pyplot as plt
 
 import math
+from enum import Enum
 
 def callback(x):
     pass
@@ -40,27 +41,31 @@ class DetectSign():
         self.showing_plot_track = "off"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
-        self.showing_final_image = "on"
+        self.showing_final_image = "off"
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
-        self.pub_image_lane_type = "raw" # you can choose image type "compressed", "raw"
+        self.pub_image_traffic_sign_type = "raw" # you can choose image type "compressed", "raw"
 
         if self.sub_image_original_type == "compressed":
             # subscribes compressed image
-            self.sub_image_original = rospy.Subscriber('/camera/image_compensated/compressed', CompressedImage, self.callback, queue_size = 1)
+            self.sub_image_original = rospy.Subscriber('/detect/image_input/compressed', CompressedImage, self.callback, queue_size = 1)
         elif self.sub_image_original_type == "raw":
             # subscribes raw image
-            self.sub_image_original = rospy.Subscriber('/camera/image_compensated', Image, self.callback, queue_size = 1)
+            self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.callback, queue_size = 1)
 
-        self.pub_sign = rospy.Publisher('/detect/sign', UInt8, queue_size=1)
+        self.pub_sign = rospy.Publisher('/detect/traffic_sign', UInt8, queue_size=1)
 
-        # if self.pub_image_lane_type == "compressed":
-        #     self.pub_image_sign = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
-        # elif self.pub_image_lane_type == "raw":
-        #     self.pub_image_sign = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
+        if self.pub_image_traffic_sign_type == "compressed":
+            self.pub_image_traffic_sign = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
+        elif self.pub_image_traffic_sign_type == "raw":
+            self.pub_image_traffic_sign = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
-        # self.pub_lane = rospy.Publisher('/detect/lane', Float64, queue_size = 1)
+        self.pub_traffic_sign = rospy.Publisher('/detect/traffic_sign', UInt8, queue_size = 1)
 
         self.cvBridge = CvBridge()
+
+        self.TrafficSign = Enum('TrafficSign', 'divide stop parking tunnel')
+
+        print(self.TrafficSign.divide.value)
 
         self.counter = 0
 
@@ -68,6 +73,8 @@ class DetectSign():
 
         self.recog_counter_1 = 0
         self.recog_counter_2 = 0
+        self.recog_counter_3 = 0
+        self.recog_counter_4 = 0
 
         self.fnPreproc()
 
@@ -77,9 +84,13 @@ class DetectSign():
 
         self.img2 = cv2.imread('/home/leon/Desktop/divide.png',0) # trainImage1
         self.img3 = cv2.imread('/home/leon/Desktop/stop.png',0) # trainImage2
+        self.img4 = cv2.imread('/home/leon/Desktop/parking.png',0) # trainImage3
+        self.img5 = cv2.imread('/home/leon/Desktop/tunnel.png',0) # trainImage4
 
         self.kp2, self.des2 = self.sift.detectAndCompute(self.img2,None)
         self.kp3, self.des3 = self.sift.detectAndCompute(self.img3,None)
+        self.kp4, self.des4 = self.sift.detectAndCompute(self.img4,None)
+        self.kp5, self.des5 = self.sift.detectAndCompute(self.img5,None)
 
         FLANN_INDEX_KDTREE = 0
         index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
@@ -116,6 +127,8 @@ class DetectSign():
 
         matches1 = self.flann.knnMatch(des1,self.des2,k=2)
         matches2 = self.flann.knnMatch(des1,self.des3,k=2)
+        matches3 = self.flann.knnMatch(des1,self.des4,k=2)
+        matches4 = self.flann.knnMatch(des1,self.des5,k=2)
 
         # store all the good matches as per Lowe's ratio test.
         good1 = []
@@ -140,18 +153,18 @@ class DetectSign():
             if mse < MIN_MSE_DECISION:
                 self.recog_counter_1 += 1
 
-                rospy.loginfo("Found1! %d %d", self.recog_counter_1, mse)
+                # rospy.loginfo("Found1! %d %d", self.recog_counter_1, mse)
 
                 if self.recog_counter_1 == self.RECOG_MIN_COUNT:
                     self.recog_counter_1 = 0
                     msg_sign = UInt8()
-                    msg_sign.data = 1
+                    msg_sign.data = self.TrafficSign.divide.value
 
                     self.pub_sign.publish(msg_sign)
 
 
         else:
-            print "Not enough matches are found 1 - %d/%d" % (len(good1),MIN_MATCH_COUNT)
+            # print "Not enough matches are found 1 - %d/%d" % (len(good1),MIN_MATCH_COUNT)
             self.recog_counter_1 = 0
             matchesMask1 = None
 
@@ -177,38 +190,128 @@ class DetectSign():
             if mse < MIN_MSE_DECISION:
                 self.recog_counter_2 += 1
 
-                rospy.loginfo("Found2! %d %d", self.recog_counter_2, mse)
+                # rospy.loginfo("Found2! %d %d", self.recog_counter_2, mse)
 
                 if self.recog_counter_2 == self.RECOG_MIN_COUNT:
                     self.recog_counter_2 = 0
                     msg_sign = UInt8()
-                    msg_sign.data = 2
+                    msg_sign.data = self.TrafficSign.stop.value
 
                     self.pub_sign.publish(msg_sign)
 
         else:
-            print "Not enough matches are found 2 - %d/%d" % (len(good2),MIN_MATCH_COUNT)
+            # print "Not enough matches are found 2 - %d/%d" % (len(good2),MIN_MATCH_COUNT)
             self.recog_counter_2 = 0
             matchesMask2 = None
 
+        good3 = []
+        for m,n in matches3:
+            if m.distance < 0.7*n.distance:
+                good3.append(m)
+
+        if len(good3)>MIN_MATCH_COUNT:
+            src_pts = np.float32([ kp1[m.queryIdx].pt for m in good3 ]).reshape(-1,1,2)
+            dst_pts = np.float32([ self.kp4[m.trainIdx].pt for m in good3 ]).reshape(-1,1,2)
+
+            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+            matchesMask3 = mask.ravel().tolist()
+
+            # h = img1.shape[0]
+            # w = img1.shape[1]
+            # pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+            # dst = cv2.perspectiveTransform(pts,M)
+
+            # self.img3 = cv2.polylines(self.img3,[np.int32(dst)],True,255,3, cv2.LINE_AA)
+            mse = self.fnCalcMSE(src_pts, dst_pts)
+            if mse < MIN_MSE_DECISION:
+                self.recog_counter_3 += 1
+
+                # rospy.loginfo("Found3! %d %d", self.recog_counter_3, mse)
+
+                if self.recog_counter_3 == self.RECOG_MIN_COUNT:
+                    self.recog_counter_3 = 0
+                    msg_sign = UInt8()
+                    msg_sign.data = self.TrafficSign.parking.value
+
+                    self.pub_sign.publish(msg_sign)
+
+        else:
+            # print "Not enough matches are found 3 - %d/%d" % (len(good3),MIN_MATCH_COUNT)
+            self.recog_counter_3 = 0
+            matchesMask3 = None
+
+        good4 = []
+        for m,n in matches4:
+            if m.distance < 0.7*n.distance:
+                good4.append(m)
+
+        if len(good4)>MIN_MATCH_COUNT:
+            src_pts = np.float32([ kp1[m.queryIdx].pt for m in good4 ]).reshape(-1,1,2)
+            dst_pts = np.float32([ self.kp5[m.trainIdx].pt for m in good4 ]).reshape(-1,1,2)
+
+            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+            matchesMask4 = mask.ravel().tolist()
+
+            # h = img1.shape[0]
+            # w = img1.shape[1]
+            # pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+            # dst = cv2.perspectiveTransform(pts,M)
+
+            # self.img3 = cv2.polylines(self.img3,[np.int32(dst)],True,255,3, cv2.LINE_AA)
+            mse = self.fnCalcMSE(src_pts, dst_pts)
+            if mse < MIN_MSE_DECISION:
+                self.recog_counter_4 += 1
+
+                # rospy.loginfo("Found4! %d %d", self.recog_counter_4, mse)
+
+                if self.recog_counter_4 == self.RECOG_MIN_COUNT:
+                    self.recog_counter_4 = 0
+                    msg_sign = UInt8()
+                    msg_sign.data = self.TrafficSign.tunnel.value
+
+                    self.pub_sign.publish(msg_sign)
+
+        else:
+            # print "Not enough matches are found 4 - %d/%d" % (len(good4),MIN_MATCH_COUNT)
+            self.recog_counter_4 = 0
+            matchesMask4 = None
+
+
+        draw_params1 = dict(matchColor = (0,255,0), # draw matches in green color
+                        singlePointColor = None,
+                        matchesMask = matchesMask1, # draw only inliers
+                        flags = 2)
+
+        final1 = cv2.drawMatches(img1,kp1,self.img2,self.kp2,good1,None,**draw_params1)
+        
+        draw_params2 = dict(matchColor = (0,0,255), # draw matches in green color
+                        singlePointColor = None,
+                        matchesMask = matchesMask2, # draw only inliers
+                        flags = 2)
+
+        final2 = cv2.drawMatches(img1,kp1,self.img3,self.kp3,good2,None,**draw_params2)
+
+        draw_params3 = dict(matchColor = (255,0,0), # draw matches in green color
+                        singlePointColor = None,
+                        matchesMask = matchesMask3, # draw only inliers
+                        flags = 2)
+
+        final3 = cv2.drawMatches(img1,kp1,self.img4,self.kp4,good3,None,**draw_params3)
+
+        draw_params4 = dict(matchColor = (255,0,0), # draw matches in green color
+                        singlePointColor = None,
+                        matchesMask = matchesMask4, # draw only inliers
+                        flags = 2)
+
+        final4 = cv2.drawMatches(img1,kp1,self.img5,self.kp5,good4,None,**draw_params4)
+
+
         if self.showing_final_image == "on":
-            draw_params1 = dict(matchColor = (0,255,0), # draw matches in green color
-                            singlePointColor = None,
-                            matchesMask = matchesMask1, # draw only inliers
-                            flags = 2)
-
-            final1 = cv2.drawMatches(img1,kp1,self.img2,self.kp2,good1,None,**draw_params1)
-            
-            draw_params2 = dict(matchColor = (0,0,255), # draw matches in green color
-                            singlePointColor = None,
-                            matchesMask = matchesMask2, # draw only inliers
-                            flags = 2)
-
-            final2 = cv2.drawMatches(img1,kp1,self.img3,self.kp3,good2,None,**draw_params2)
-
             # cv2.imshow('img1', img1), cv2.waitKey(1)
             cv2.imshow('final1', final1), cv2.waitKey(1)
             cv2.imshow('final2', final2), cv2.waitKey(1)
+            cv2.imshow('final3', final3), cv2.waitKey(1)
+            cv2.imshow('final4', final4), cv2.waitKey(1)
 
         # publishing calbrated and Bird's eye view as compressed image
         # if self.pub_image_lane_type == "compressed":
