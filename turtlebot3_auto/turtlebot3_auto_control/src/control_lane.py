@@ -25,6 +25,7 @@ class ControlLane():
 
         self.lastError = 0
 
+
         rospy.on_shutdown(self.fnShutDown)
 
     def callback(self, desired_center):
@@ -32,7 +33,7 @@ class ControlLane():
 
         error = center - 500
 
-        MAX_VEL = 0.19#0.19
+        MAX_VEL = 0.19
 
         Kp = 0.0035#0.0035
         Kd = 0.007#0.007

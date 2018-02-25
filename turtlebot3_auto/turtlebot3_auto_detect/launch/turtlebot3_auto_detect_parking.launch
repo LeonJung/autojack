@@ -1,4 +1,7 @@
 <launch>
   <!-- parking lot detection -->
-  <node pkg="turtlebot3_auto_detect" type="detect_parking.py" name="detect_parking" output="screen" />
+  <node pkg="turtlebot3_auto_detect" type="detect_parking.py" name="detect_parking" output="screen">
+    <remap from="/detect/image_input" to="/camera/image_projected_compensated" />
+    <remap from="/detect/image_input/compressed" to="/camera/image_projected_compensated/compressed" />
+  </node>
 </launch>

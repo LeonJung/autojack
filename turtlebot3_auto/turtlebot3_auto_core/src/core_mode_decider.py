@@ -37,7 +37,7 @@ class CoreModeDecider():
         self.pub_decided_mode = rospy.Publisher('/core/decided_mode', UInt8, queue_size=1)
 
         self.InvokedObject = Enum('InvokedObject', 'traffic_sign traffic_light')
-        self.TrafficSign = Enum('TrafficSign', 'stop divide parking tunnel')
+        self.TrafficSign = Enum('TrafficSign', 'divide stop parking tunnel')
         self.CurrentMode = Enum('CurrentMode', 'idle lane_following traffic_light parking_lot level_crossing tunnel')
 
         self.fnInitMode()
@@ -63,10 +63,10 @@ class CoreModeDecider():
             if invoked_object == self.InvokedObject.traffic_light.value:    # Traffic Light detected
                 self.current_mode = self.CurrentMode.traffic_light.value
             elif invoked_object == self.InvokedObject.traffic_sign.value:   # Any Sign detected
-                if msg_data.data == self.TrafficSign.stop.value:            # Stop Sign detected
-                    self.current_mode = self.CurrentMode.parking_lot.value
-                elif msg_data.data == self.TrafficSign.divide.value:        # Divide Sign detected
+                if msg_data.data == self.TrafficSign.divide.value:          # Divide Sign detected
                     pass
+                elif msg_data.data == self.TrafficSign.stop.value:          # Stop Sign detected
+                    self.current_mode = self.CurrentMode.level_crossing.value
                 elif msg_data.data == self.TrafficSign.parking.value:       # Parking Sign detected
                     self.current_mode = self.CurrentMode.parking_lot.value
                 elif msg_data.data == self.TrafficSign.tunnel.value:        # Tunnel Sign detected

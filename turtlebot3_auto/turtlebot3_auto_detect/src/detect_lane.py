@@ -188,6 +188,8 @@ class DetectLane():
             pts_right = np.array([np.transpose(np.vstack([right_fitx, ploty]))])
             cv2.polylines(color_warp_lines, np.int_([pts_right]), isClosed=False, color=(255, 255, 0), thickness=25)
         
+        is_center_x_exist = True
+
         if self.reliability_white_line > 50 and self.reliability_yellow_line > 50:   
             if white_fraction > 3000 and yellow_fraction > 3000:
                 centerx = np.mean([left_fitx, right_fitx], axis=0)
@@ -224,6 +226,7 @@ class DetectLane():
             cv2.polylines(color_warp_lines, np.int_([pts_center]), isClosed=False, color=(0, 255, 255), thickness=12)
 
         else:
+            is_center_x_exist = False
             # TODO: go straight
             pass
 
@@ -331,54 +334,54 @@ class DetectLane():
         # final = self.draw_lines(cv_image, cv_lanes, left_fit, right_fit, perspective=[src,dst])
 
 
-
         if self.showing_final_image == "on":
             cv2.imshow('final', final), cv2.waitKey(1)
 
         # publishing calbrated and Bird's eye view as compressed image
         if self.pub_image_lane_type == "compressed":
-            # msg_final_img = CompressedImage()
-            # msg_final_img.header.stamp = rospy.Time.now()
-            # msg_final_img.format = "jpeg"
-            # msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
-            # self.pub_image_lane.publish(msg_final_img)
+            if is_center_x_exist == True:
+                # msg_final_img = CompressedImage()
+                # msg_final_img.header.stamp = rospy.Time.now()
+                # msg_final_img.format = "jpeg"
+                # msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
+                # self.pub_image_lane.publish(msg_final_img)
 
-            msg_desired_center = Float64()
-            msg_desired_center.data = centerx.item(350) # 450
+                msg_desired_center = Float64()
+                msg_desired_center.data = centerx.item(350) # 450
 
-            # print(msg_desired_center.data)
-            # msg_desired_center.data = desired_center.item(300)
+                # print(msg_desired_center.data)
+                # msg_desired_center.data = desired_center.item(300)
 
-            # msg_off_center = Float64()
-            # msg_off_center.data = off_center
+                # msg_off_center = Float64()
+                # msg_off_center.data = off_center
 
-            self.pub_lane.publish(msg_desired_center)
-            # self._pub4.publish(msg_off_center)
+                self.pub_lane.publish(msg_desired_center)
+                # self._pub4.publish(msg_off_center)
 
-            # msg_homography = CompressedImage()
-            # msg_homography.header.stamp = rospy.Time.now()
-            # msg_homography.format = "jpeg"
-            # msg_homography.data = np.array(cv2.imencode('.jpg', cv_Homography)[1]).tostring()
-            # self.pub_image_lane.publish(msg_homography)
+                # msg_homography = CompressedImage()
+                # msg_homography.header.stamp = rospy.Time.now()
+                # msg_homography.format = "jpeg"
+                # msg_homography.data = np.array(cv2.imencode('.jpg', cv_Homography)[1]).tostring()
+                # self.pub_image_lane.publish(msg_homography)
 
         # publishing calbrated and Bird's eye view as raw image
         elif self.pub_image_lane_type == "raw":
             # self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
+            if is_center_x_exist == True:
+                msg_desired_center = Float64()
 
-            msg_desired_center = Float64()
+                msg_desired_center.data = centerx.item(350) # 350
 
-            msg_desired_center.data = centerx.item(350) # 350
+                # print(msg_desired_center.data)
 
-            # print(msg_desired_center.data)
+                # msg_off_center = Float64()
+                # msg_off_center.data = off_center
 
-            # msg_off_center = Float64()
-            # msg_off_center.data = off_center
+                self.pub_lane.publish(msg_desired_center)
+                # self._pub4.publish(msg_off_center)
 
-            self.pub_lane.publish(msg_desired_center)
-            # self._pub4.publish(msg_off_center)
-
-            # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
-            # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
+                # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
+                # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
 
     def maskWhiteLane(self, image):
         # Convert BGR to HSV

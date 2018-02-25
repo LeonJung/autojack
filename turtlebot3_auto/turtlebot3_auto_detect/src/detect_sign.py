@@ -38,10 +38,11 @@ def callback(x):
 
 class DetectSign():
     def __init__(self):
+        self.fnPreproc()
+
         self.showing_plot_track = "off"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
-        self.showing_final_image = "off"
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
         self.pub_image_traffic_sign_type = "raw" # you can choose image type "compressed", "raw"
 
@@ -65,8 +66,6 @@ class DetectSign():
 
         self.TrafficSign = Enum('TrafficSign', 'divide stop parking tunnel')
 
-        print(self.TrafficSign.divide.value)
-
         self.counter = 0
 
         self.RECOG_MIN_COUNT = 3
@@ -76,7 +75,6 @@ class DetectSign():
         self.recog_counter_3 = 0
         self.recog_counter_4 = 0
 
-        self.fnPreproc()
 
     def fnPreproc(self):
         # Initiate SIFT detector
@@ -306,7 +304,7 @@ class DetectSign():
         final4 = cv2.drawMatches(img1,kp1,self.img5,self.kp5,good4,None,**draw_params4)
 
 
-        if self.showing_final_image == "on":
+        if self.showing_images == "on":
             # cv2.imshow('img1', img1), cv2.waitKey(1)
             cv2.imshow('final1', final1), cv2.waitKey(1)
             cv2.imshow('final2', final2), cv2.waitKey(1)
