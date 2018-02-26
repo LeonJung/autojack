@@ -22,13 +22,13 @@
 import rospy
 import cv2
 import numpy as np
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import UInt8
 from sensor_msgs.msg import Image, CompressedImage
 import tf
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import math
 from enum import Enum

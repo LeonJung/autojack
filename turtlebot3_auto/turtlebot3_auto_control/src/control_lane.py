@@ -8,7 +8,7 @@ import numpy as np
 from std_msgs.msg import Float64
 from geometry_msgs.msg import Twist
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 def callback(x):    
     pass
