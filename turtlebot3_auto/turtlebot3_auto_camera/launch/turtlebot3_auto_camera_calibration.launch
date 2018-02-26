@@ -38,4 +38,6 @@
       <remap from="/camera/image_output/compressed" to="/camera/image_projected_compensated/compressed" />
     </node>
   </group>
+
+
 </launch>

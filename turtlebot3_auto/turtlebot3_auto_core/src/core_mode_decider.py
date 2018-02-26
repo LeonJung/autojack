@@ -17,7 +17,7 @@
 # limitations under the License.
 ################################################################################
 
-# Author: Ryu Woon Jung (Leon), [AuTURBO] Kihoon Kim
+# Author: Ryu Woon Jung (Leon)
 
 import rospy, roslaunch
 import numpy as np
@@ -56,7 +56,7 @@ class CoreModeDecider():
         rospy.loginfo("Init Mode")
         self.fnInitMode()
 
-    def fnInitMode(self):                                                       # starts only when the program is started initially or any mission is completed
+    def fnInitMode(self):                                                   # starts only when the program is started initially or any mission is completed
         self.current_mode = self.CurrentMode.lane_following.value
         self.fnPublishMode()
 
@@ -77,7 +77,6 @@ class CoreModeDecider():
                 pass
 
             self.fnPublishMode()
-
         else:
             pass
 
@@ -85,7 +84,6 @@ class CoreModeDecider():
         decided_mode = UInt8()
         decided_mode.data = self.current_mode
         self.pub_decided_mode.publish(decided_mode)
-        # rospy.loginfo("%d", decided_mode.data)
 
     def main(self):
         rospy.spin()

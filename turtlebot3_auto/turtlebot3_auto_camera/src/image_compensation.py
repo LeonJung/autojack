@@ -20,93 +20,74 @@
 # Author: Ryu Woon Jung (Leon)
 
 import rospy
-import cv2
 import numpy as np
+import cv2
 from cv_bridge import CvBridge
-from std_msgs.msg import Float64
 from sensor_msgs.msg import Image, CompressedImage
-
-# from dynamic_reconfigure.server import Server as DynamicReconfigureServer
-# from turtlebot3_auto_camera.cfg import ImageCompensationParamsConfig
 
 class ImageCompensation():
     def __init__(self):
-        # drs = DynamicReconfigureServer(ImageCompensationParamsConfig, self.cbDRImageCompensationParams)
+        self.image_output = "off"           # "on" / "off"
+        self.sub_image_type = "raw"         # "compressed" / "raw"
+        self.pub_image_type = "raw"         # "compressed" / "raw"
 
-        self.show_image_cv2window = "off"               # "on" / "off"
-        self.sub_image_original_type = "raw"     # "compressed" / "raw"
-        self.pub_image_compensated_type = "raw"  # "compressed" / "raw"
-
-        if self.sub_image_original_type == "compressed":
+        if self.sub_image_type == "compressed":
             # subscribes compressed image 
             self.sub_image_original = rospy.Subscriber('/camera/image_input/compressed', CompressedImage, self.cbImageCompensation, queue_size = 1)
-        elif self.sub_image_original_type == "raw":
+        elif self.sub_image_type == "raw":
             # subscribes raw image 
             self.sub_image_original = rospy.Subscriber('/camera/image_input', Image, self.cbImageCompensation, queue_size = 1)
 
-        if self.pub_image_compensated_type == "compressed":
+        if self.pub_image_type == "compressed":
             # publishes compensated image in compressed type 
             self.pub_image_compensated = rospy.Publisher('/camera/image_output/compressed', CompressedImage, queue_size = 1)
-        elif self.pub_image_compensated_type == "raw":
+        elif self.pub_image_type == "raw":
             # publishes compensated image in raw type
             self.pub_image_compensated = rospy.Publisher('/camera/image_output', Image, queue_size = 1)
 
         self.cvBridge = CvBridge()
 
-        self.counter = 0
-        
     def cbImageCompensation(self, msg_img):
-        # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
-        # if self.counter % 3 != 0:
-        #     self.counter += 1
-        #     return
-
-        if self.sub_image_original_type == "compressed":
+        if self.sub_image_type == "compressed":
             # converts compressed image to opencv image
             np_image_original = np.fromstring(msg_img.data, np.uint8)
             cv_image_original = cv2.imdecode(np_image_original, cv2.IMREAD_COLOR)
-        elif self.sub_image_original_type == "raw":
+        elif self.sub_image_type == "raw":
             # converts raw image to opencv image
             cv_image_original = self.cvBridge.imgmsg_to_cv2(msg_img, "bgr8")
 
         cv_image_compensated = np.copy(cv_image_original)
 
-        ## Image compensation based on not-originalinal histogram equalization method
-        # TODO : processing speed
-        # TODO : should this be placed after image_to_ground image? or rectified image? if it calculates based on rectified image, the brightness varies on so much stuffs around
-        self.clip_hist_percent = 1.0
+        ## Image compensation based on pseudo histogram equalization
+        clip_hist_percent = 1.0
         
         hist_size = 256
-        alpha = 0
-        beta = 0
         min_gray = 0
         max_gray = 0
+        alpha = 0
+        beta = 0
 
         gray = cv2.cvtColor(cv_image_compensated, cv2.COLOR_BGR2GRAY)
 
-        if self.clip_hist_percent == 0.0:
+        # histogram calculation
+        if clip_hist_percent == 0.0:
             min_gray, max_gray, _, _ = cv2.minMaxLoc(gray)
         else:
             hist = cv2.calcHist([gray], [0], None, [hist_size], [0, hist_size])
 
-            accumulator = np.zeros((hist_size))
-            
-            accumulator[0] = hist[0]
-
-            for i in range(0, hist_size):
-                accumulator[i] = accumulator[i - 1] + hist[i]
+            accumulator = np.cumsum(hist)
 
             max = accumulator[hist_size - 1]
 
-            self.clip_hist_percent *= (max / 100.)
-            self.clip_hist_percent /= 2.
+            clip_hist_percent *= (max / 100.)
+            clip_hist_percent /= 2.
 
             min_gray = 0
-            while accumulator[min_gray] < self.clip_hist_percent:
+            while accumulator[min_gray] < clip_hist_percent:
                 min_gray += 1
             
             max_gray = hist_size - 1
-            while accumulator[max_gray] >= (max - self.clip_hist_percent):
+            while accumulator[max_gray] >= (max - clip_hist_percent):
                 max_gray -= 1
 
         input_range = max_gray - min_gray
@@ -116,35 +97,27 @@ class ImageCompensation():
 
         cv_image_compensated = cv2.convertScaleAbs(cv_image_compensated, -1, alpha, beta)
 
-        if self.show_image_cv2window == "on":
-            cv2.namedWindow('image', cv2.WINDOW_AUTOSIZE)
-            cv2.moveWindow('image', 0, 250)
-            cv2.imshow('image', cv_image_original), cv2.waitKey(1)
+        if self.image_output == "on":
+            # shows original image
+            cv2.namedWindow('cv_image_original', cv2.WINDOW_AUTOSIZE)
+            cv2.moveWindow('cv_image_original', 0, 250)
+            cv2.imshow('cv_image_original', cv_image_original), cv2.waitKey(1)
 
-            cv2.namedWindow('dst', cv2.WINDOW_AUTOSIZE)
-            cv2.moveWindow('dst', 800, 500)
-            cv2.imshow('dst', cv_image_compensated)
+            # shows brightness compensated image 
+            cv2.namedWindow('cv_image_compensated', cv2.WINDOW_AUTOSIZE)
+            cv2.moveWindow('cv_image_compensated', 800, 500)
+            cv2.imshow('cv_image_compensated', cv_image_compensated), cv2.waitKey(1)
 
-        # publishing calbrated and Bird's eye view as compressed image
-        if self.pub_image_compensated_type == "compressed":
+        if self.pub_image_type == "compressed":
+            # publishes compensated image in compressed type
             self.pub_image_compensated.publish(self.cvBridge.cv2_to_compressed_imgmsg(cv_image_compensated, "jpg"))
 
-        # publishing calbrated and Bird's eye view as raw image
-        elif self.pub_image_compensated_type == "raw":
+        elif self.pub_image_type == "raw":
+            # publishes compensated image in raw type
             self.pub_image_compensated.publish(self.cvBridge.cv2_to_imgmsg(cv_image_compensated, "bgr8"))
-
 
     def main(self):
         rospy.spin()
-
-    # def cbDRImageCompensationParams(self, config, level):
-    #     self.clip_hist_percent = config["clip_hist_percent"]
-
-    #     rospy.loginfo("%f", self.clip_hist_percent)
-    #     # self.a = config["a"]
-    #     # self.b = config["b"]
-
-    #     return config
 
 if __name__ == '__main__':
     rospy.init_node('image_compensation')

@@ -17,11 +17,11 @@
 # limitations under the License.
 ################################################################################
 
-# Author: Ryu Woon Jung (Leon), [AuTURBO] Kihoon Kim
+# Author: Ryu Woon Jung (Leon), [AuTURBO] Kihoon Kim (https://github.com/auturbo)
 
 import rospy, roslaunch
-import cv2
 import numpy as np
+import cv2
 from cv_bridge import CvBridge
 from std_msgs.msg import UInt8
 from sensor_msgs.msg import Image, CompressedImage
@@ -63,7 +63,6 @@ class CoreNodeController():
 
         self.Launcher = Enum('Launcher', 'launch_camera launch_detect_sign launch_detect_lane launch_control_lane launch_detect_traffic_light launch_control_traffic_light launch_detect_parking launch_control_parking launch_detect_level launch_control_level launch_detect_tunnel launch_control_tunnel')
 
-#<editor-fold desc="Description">
         self.uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         
         self.launch_camera_launched = False
@@ -74,15 +73,10 @@ class CoreNodeController():
         self.launch_control_parking_launched = False
         self.launch_detect_level_launched = False
         # self.launch_control_level_launched = False
-
-        # self.launch_detect_tunnel_launched = False
-
         self.launch_detect_traffic_light_launched = False
-
-        # self.launch_control_tunnel = roslaunch.scriptapi.ROSLaunch()
-        # self.launch_control_tunnel = roslaunch.parent.ROSLaunchParent(uuid, [self.ros_package_path + "turtlebot3_auto_control/launch/turtlebot3_auto_control_tunnel.launch"])     
+        self.launch_control_traffic_light_launched = False
+        # self.launch_detect_tunnel_launched = False
         # self.launch_control_tunnel_launched = False
-#</editor-fold>
 
         self.current_mode = self.CurrentMode.idle.value
 
@@ -167,7 +161,7 @@ class CoreNodeController():
             rospy.loginfo("New trigger for lane_following")
 
             self.fnLaunch(self.Launcher.launch_camera.value, True)
-            self.fnLaunch(self.Launcher.launch_detect_sign.value, False)
+            self.fnLaunch(self.Launcher.launch_detect_sign.value, True)
             self.fnLaunch(self.Launcher.launch_detect_lane.value, True)
             self.fnLaunch(self.Launcher.launch_detect_parking.value, False)
             self.fnLaunch(self.Launcher.launch_control_lane.value, True)
