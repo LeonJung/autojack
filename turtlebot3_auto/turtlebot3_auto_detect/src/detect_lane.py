@@ -22,13 +22,13 @@
 import rospy
 import cv2
 import numpy as np
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans
 from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import Image, CompressedImage
 import tf
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import math
 
@@ -37,7 +37,7 @@ def callback(x):
 
 class DetectLane():
     def __init__(self):
-        self.showing_plot_track = "off"
+        # self.showing_plot_track = "off"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.showing_trackbar = "off"
 
@@ -573,19 +573,19 @@ class DetectLane():
         #     i = 50 + 20 * i
         #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
 
-        if self.showing_plot_track == "on":
-            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-            out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-            plt.imshow(out_img)
-            plt.plot(left_fitx, ploty, color='yellow')
-            plt.plot(right_fitx, ploty, color='yellow')
-            plt.xlim(0, 1280)
-            plt.ylim(720, 0)
-            plt.draw()
-            plt.pause(0.00000000001)
-            plt.ion()
-            plt.clf()
-            plt.show()
+        # if self.showing_plot_track == "on":
+        #     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        #     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        #     plt.imshow(out_img)
+        #     plt.plot(left_fitx, ploty, color='yellow')
+        #     plt.plot(right_fitx, ploty, color='yellow')
+        #     plt.xlim(0, 1280)
+        #     plt.ylim(720, 0)
+        #     plt.draw()
+        #     plt.pause(0.00000000001)
+        #     plt.ion()
+        #     plt.clf()
+        #     plt.show()
 
         return centerx, left_fit, right_fit
 
@@ -617,17 +617,17 @@ class DetectLane():
         #     i = 50 + 20 * i
         #     cv2.putText(result, line, (0,i), cv2.FONT_HERSHEY_DUPLEX, 0.5,(255,255,255),1,cv2.LINE_AA)
 
-        if self.showing_plot_track == "on":
-            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-            plt.imshow(out_img)
-            plt.plot(left_fitx, ploty, color='yellow')
-            plt.xlim(0, 1280)
-            plt.ylim(720, 0)
-            plt.draw()
-            plt.pause(0.00000000001)
-            plt.ion()
-            plt.clf()
-            plt.show()
+        # if self.showing_plot_track == "on":
+        #     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        #     plt.imshow(out_img)
+        #     plt.plot(left_fitx, ploty, color='yellow')
+        #     plt.xlim(0, 1280)
+        #     plt.ylim(720, 0)
+        #     plt.draw()
+        #     plt.pause(0.00000000001)
+        #     plt.ion()
+        #     plt.clf()
+        #     plt.show()
 
         return left_fitx, left_fit
 
@@ -724,19 +724,19 @@ class DetectLane():
         # centerx = np.mean([left_fitx, right_fitx], axis=0)
         # print(centerx.item(300))
 
-        if self.showing_plot_track == "on":
-            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-            # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-            plt.imshow(out_img)
-            plt.plot(left_fitx, ploty, color='yellow')
-            # plt.plot(right_fitx, ploty, color='yellow')
-            plt.xlim(0, 1000)
-            plt.ylim(600, 0)
-            plt.draw()
-            plt.pause(0.00000000001)
-            plt.ion()
-            plt.clf()
-            plt.show()
+        # if self.showing_plot_track == "on":
+        #     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        #     # out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        #     plt.imshow(out_img)
+        #     plt.plot(left_fitx, ploty, color='yellow')
+        #     # plt.plot(right_fitx, ploty, color='yellow')
+        #     plt.xlim(0, 1000)
+        #     plt.ylim(600, 0)
+        #     plt.draw()
+        #     plt.pause(0.00000000001)
+        #     plt.ion()
+        #     plt.clf()
+        #     plt.show()
 
         return left_fitx, left_fit
 
@@ -825,19 +825,19 @@ class DetectLane():
         centerx = np.mean([left_fitx, right_fitx], axis=0)
         # print(centerx.item(300))
 
-        if self.showing_plot_track == "on":
-            out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
-            out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-            plt.imshow(out_img)
-            plt.plot(left_fitx, ploty, color='yellow')
-            plt.plot(right_fitx, ploty, color='yellow')
-            plt.xlim(0, 1000)
-            plt.ylim(600, 0)
-            plt.draw()
-            plt.pause(0.00000000001)
-            plt.ion()
-            plt.clf()
-            plt.show()
+        # if self.showing_plot_track == "on":
+        #     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        #     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
+        #     plt.imshow(out_img)
+        #     plt.plot(left_fitx, ploty, color='yellow')
+        #     plt.plot(right_fitx, ploty, color='yellow')
+        #     plt.xlim(0, 1000)
+        #     plt.ylim(600, 0)
+        #     plt.draw()
+        #     plt.pause(0.00000000001)
+        #     plt.ion()
+        #     plt.clf()
+        #     plt.show()
 
         return centerx, left_fit, right_fit
 
