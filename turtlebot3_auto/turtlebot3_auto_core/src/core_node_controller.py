@@ -167,7 +167,7 @@ class CoreNodeController():
             rospy.loginfo("New trigger for lane_following")
 
             self.fnLaunch(self.Launcher.launch_camera.value, True)
-            self.fnLaunch(self.Launcher.launch_detect_sign.value, True)
+            self.fnLaunch(self.Launcher.launch_detect_sign.value, False)
             self.fnLaunch(self.Launcher.launch_detect_lane.value, True)
             self.fnLaunch(self.Launcher.launch_detect_parking.value, False)
             self.fnLaunch(self.Launcher.launch_control_lane.value, True)
