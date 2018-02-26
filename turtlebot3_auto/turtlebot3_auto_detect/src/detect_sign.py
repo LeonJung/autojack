@@ -160,6 +160,8 @@ class DetectSign():
 
                     self.pub_sign.publish(msg_sign)
 
+                    # rospy.loginfo("TrafficSign 1")
+
 
         else:
             # print "Not enough matches are found 1 - %d/%d" % (len(good1),MIN_MATCH_COUNT)
@@ -197,6 +199,9 @@ class DetectSign():
 
                     self.pub_sign.publish(msg_sign)
 
+                    # rospy.loginfo("TrafficSign 2")
+
+
         else:
             # print "Not enough matches are found 2 - %d/%d" % (len(good2),MIN_MATCH_COUNT)
             self.recog_counter_2 = 0
@@ -233,6 +238,9 @@ class DetectSign():
 
                     self.pub_sign.publish(msg_sign)
 
+                    # rospy.loginfo("TrafficSign 3")
+
+
         else:
             # print "Not enough matches are found 3 - %d/%d" % (len(good3),MIN_MATCH_COUNT)
             self.recog_counter_3 = 0
@@ -268,6 +276,8 @@ class DetectSign():
                     msg_sign.data = self.TrafficSign.tunnel.value
 
                     self.pub_sign.publish(msg_sign)
+
+                    # rospy.loginfo("TrafficSign 4")
 
         else:
             # print "Not enough matches are found 4 - %d/%d" % (len(good4),MIN_MATCH_COUNT)

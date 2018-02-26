@@ -71,9 +71,9 @@ def fnCheckDistanceIsEqual(point1, point2, point3):
     else:
         return False
 
-class DetectLevel():
+class DetectTrafficLight():
     def __init__(self):
-        self.showing_final_image = "off"
+        self.showing_final_image = "on"
         self.showing_trackbar = "off"
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
@@ -85,17 +85,17 @@ class DetectLevel():
             # subscribes raw image
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.cbGetImage, queue_size = 1)
  
-        self.sub_level_crossing_order = rospy.Subscriber('/detect/level_crossing_order', UInt8, self.cbLevelCrossingOrder, queue_size=1)
+        self.sub_traffic_light_order = rospy.Subscriber('/detect/traffic_light_order', UInt8, self.cbTrafficLightOrder, queue_size=1)
 
-        self.sub_level_crossing_finished = rospy.Subscriber('/control/level_crossing_finished', UInt8, self.cbLevelCrossingFinished, queue_size = 1)
+        self.sub_traffic_light_finished = rospy.Subscriber('/control/traffic_light_finished', UInt8, self.cbTrafficLightFinished, queue_size = 1)
 
-        self.pub_level_crossing_return = rospy.Publisher('/detect/level_crossing_stamped', UInt8, queue_size=1)
+        self.pub_traffic_light_return = rospy.Publisher('/detect/traffic_light_stamped', UInt8, queue_size=1)
 
-        self.pub_parking_start = rospy.Publisher('/control/level_crossing_start', UInt8, queue_size = 1)
+        self.pub_parking_start = rospy.Publisher('/control/traffic_light_start', UInt8, queue_size = 1)
 
         self.pub_max_vel = rospy.Publisher('/control/max_vel', Float64, queue_size = 1)
 
-        self.StepOfLevelCrossing = Enum('StepOfLevelCrossing', 'searching_stop_sign searching_level watching_level stop pass_level')
+        self.StepOfTrafficLight = Enum('StepOfTrafficLight', 'searching_traffic_light searching_green_light searching_yellow_light searching_red_light waiting_green_light pass_traffic_light')
 
         self.Hue_l_red = 0
         self.Hue_h_red = 8
@@ -109,15 +109,15 @@ class DetectLevel():
 
         self.stop_bar_count = 0
 
-        self.is_level_crossing_finished = False
+        self.is_traffic_light_finished = False
 
-        # rospy.sleep(1)
+        rospy.sleep(1)
 
-        # loop_rate = rospy.Rate(15)
-        # while not rospy.is_shutdown():
-        #     self.fnFindLevel()
+        loop_rate = rospy.Rate(15)
+        while not rospy.is_shutdown():
+            self.fnFindTrafficLight()
 
-        #     loop_rate.sleep()
+            loop_rate.sleep()
 
     def cbGetImage(self, image_msg):
         if self.sub_image_original_type == "compressed":
@@ -126,25 +126,25 @@ class DetectLevel():
         else:
             self.cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
-    def cbLevelCrossingOrder(self, order):
-        pub_level_crossing_return = UInt8()
-
-        if order.data == self.StepOfLevelCrossing.searching_stop_sign.value:
+    def cbTrafficLightOrder(self, order):
+        pub_traffic_light_return = UInt8()
+    
+        if order.data == self.StepOfTrafficLight.searching_traffic_light.value:
             rospy.loginfo("Now lane_following")
 
-            pub_level_crossing_return.data = self.StepOfLevelCrossing.searching_stop_sign.value
+            pub_traffic_light_return.data = self.StepOfTrafficLight.searching_traffic_light.value
                             
                                 
-        elif order.data == self.StepOfLevelCrossing.searching_level.value:
-            rospy.loginfo("Now searching_level")
+        elif order.data == self.StepOfTrafficLight.searching_green_light.value:
+            rospy.loginfo("Now searching_green_light")
 
             msg_pub_max_vel = Float64()
             msg_pub_max_vel.data = 0.10
             self.pub_max_vel.publish(msg_pub_max_vel)
 
             while True:
-                is_level_detected, _, _ = self.fnFindLevel()
-                if is_level_detected == True:
+                is_green_light_detected, _, _ = self.fnFindTrafficLight()
+                if is_green_light_detected == True:
                     break
                 else:
                     pass
@@ -154,15 +154,15 @@ class DetectLevel():
             msg_pub_max_vel.data = 0.04
             self.pub_max_vel.publish(msg_pub_max_vel)
 
-            pub_level_crossing_return.data = self.StepOfLevelCrossing.searching_level.value
+            pub_traffic_light_return.data = self.StepOfTrafficLight.searching_green_light.value
 
 
-        elif order.data == self.StepOfLevelCrossing.watching_level.value:
-            rospy.loginfo("Now watching_level")
+        elif order.data == self.StepOfTrafficLight.searching_yellow_light.value:
+            rospy.loginfo("Now searching_yellow_light")
 
             while True:
-                _, is_level_close, _ = self.fnFindLevel()
-                if is_level_close == True:
+                _, is_yellow_light_detected, _ = self.fnFindTrafficLight()
+                if is_yellow_light_detected == True:
                     break
                 else:
                     pass
@@ -172,15 +172,15 @@ class DetectLevel():
             msg_pub_max_vel.data = 0.0
             self.pub_max_vel.publish(msg_pub_max_vel)
 
-            pub_level_crossing_return.data = self.StepOfLevelCrossing.watching_level.value
+            pub_traffic_light_return.data = self.StepOfTrafficLight.searching_yellow_light.value
 
 
-        elif order.data == self.StepOfLevelCrossing.stop.value:
-            rospy.loginfo("Now stop")
+        elif order.data == self.StepOfTrafficLight.searching_red_light.value:
+            rospy.loginfo("Now searching_red_light")
 
             while True:
-                _, _, is_level_opened = self.fnFindLevel()
-                if is_level_opened == True:
+                _, _, is_red_light_detected = self.fnFindTrafficLight()
+                if is_red_light_detected == True:
                     break
                 else:
                     pass
@@ -191,10 +191,28 @@ class DetectLevel():
             msg_pub_max_vel.data = 0.19
             self.pub_max_vel.publish(msg_pub_max_vel)
 
-            pub_level_crossing_return.data = self.StepOfLevelCrossing.stop.value
+            pub_traffic_light_return.data = self.StepOfTrafficLight.searching_red_light.value
 
-        elif order.data == self.StepOfLevelCrossing.pass_level.value:
-            rospy.loginfo("Now pass_level")
+        elif order.data == self.StepOfTrafficLight.waiting_green_light.value:
+            rospy.loginfo("Now waiting_green_light")
+
+            while True:
+                is_green_light_detected, _, _ = self.fnFindTrafficLight()
+                if is_green_light_detected == True:
+                    break
+                else:
+                    pass
+
+            rospy.loginfo("GO~~")
+
+            msg_pub_max_vel = Float64()
+            msg_pub_max_vel.data = 0.19
+            self.pub_max_vel.publish(msg_pub_max_vel)
+
+            pub_traffic_light_return.data = self.StepOfTrafficLight.waiting_green_light.value
+
+        elif order.data == self.StepOfTrafficLight.pass_traffic_light.value:
+            rospy.loginfo("Now pass_traffic_light")
 
             # while True:
             #     if self.is_obstacle_detected == False:
@@ -203,11 +221,11 @@ class DetectLevel():
             #     else:
             #         rospy.loginfo("right side is full")
 
-            pub_level_crossing_return.data = self.StepOfLevelCrossing.pass_level.value
+            pub_traffic_light_return.data = self.StepOfTrafficLight.pass_traffic_light.value
 
-        self.pub_level_crossing_return.publish(pub_level_crossing_return)
+        self.pub_traffic_light_return.publish(pub_traffic_light_return)
 
-    def fnFindLevel(self):
+    def fnFindTrafficLight(self):
 
         cv_image_mask = self.fnMaskRedOfLevel()
 
@@ -373,13 +391,13 @@ class DetectLevel():
 
         return is_level_detected, is_level_close, is_level_opened
 
-    def cbLevelCrossingFinished(self, level_crossing_finished_msg):
-        self.is_level_crossing_finished = True
+    def cbTrafficLightFinished(self, traffic_light_finished_msg):
+        self.is_traffic_light_finished = True
 
     def main(self):
         rospy.spin()
 
 if __name__ == '__main__':
-    rospy.init_node('detect_level')
-    node = DetectLevel()
+    rospy.init_node('detect_traffic_light')
+    node = DetectTrafficLight()
     node.main()

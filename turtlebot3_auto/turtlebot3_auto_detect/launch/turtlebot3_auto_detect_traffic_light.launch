@@ -1,6 +1,6 @@
 <launch>
-  <!-- level crossing detection -->
-  <node pkg="turtlebot3_auto_detect" type="detect_level.py" name="detect_level" output="screen">
+  <!-- traffic_light detection -->
+  <node pkg="turtlebot3_auto_detect" type="detect_traffic_light.py" name="detect_traffic_light" output="screen">
     <remap from="/detect/image_input" to="/camera/image_compensated" />
     <remap from="/detect/image_input/compressed" to="/camera/image_compensated/compressed" />
   </node>

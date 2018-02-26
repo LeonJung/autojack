@@ -41,7 +41,7 @@ class DetectLane():
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.showing_trackbar = "off"
 
-        self.showing_final_image = "on"
+        self.showing_final_image = "off"
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
         self.pub_image_lane_type = "raw" # you can choose image type "compressed", "raw"
 

@@ -21,19 +21,26 @@ class ControlLane():
 
         self.sub_lane = rospy.Subscriber('/control/lane', Float64, self.callback, queue_size = 1)
 
+        self.sub_max_vel = rospy.Subscriber('/control/max_vel', Float64, self.cbGetMaxVel, queue_size = 1)
+
         self.pub_cmd_vel = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
+
 
         self.lastError = 0
 
+        self.MAX_VEL = 0.19
 
         rospy.on_shutdown(self.fnShutDown)
+
+    def cbGetMaxVel(self, max_vel_msg):
+        self.MAX_VEL = max_vel_msg.data
 
     def callback(self, desired_center):
         center = desired_center.data
 
         error = center - 500
 
-        MAX_VEL = 0.19
+
 
         Kp = 0.0035#0.0035
         Kd = 0.007#0.007
@@ -49,7 +56,7 @@ class ControlLane():
         # print((1 - error / 500))       
 
         twist = Twist()
-        twist.linear.x = MAX_VEL * ((1 - abs(error) / 500) ** 2) 
+        twist.linear.x = self.MAX_VEL * ((1 - abs(error) / 500) ** 2) 
         twist.linear.y = 0
         twist.linear.z = 0
         twist.angular.x = 0

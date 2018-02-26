@@ -45,6 +45,7 @@ class CoreModeDecider():
     # Invoke if traffic sign is detected
     def cbInvokedByTrafficSign(self, traffic_sign_type_msg):
         self.fnDecideMode(self.InvokedObject.traffic_sign.value, traffic_sign_type_msg)
+        rospy.loginfo("self.current_mode = %d", self.current_mode)
         rospy.loginfo("DETECTED")
 
     # Invoke if traffic light is detected
@@ -52,6 +53,7 @@ class CoreModeDecider():
         self.fnDecideMode(self.InvokedObject.traffic_light.value, traffic_light_type_msg)
 
     def cbReturnedMode(self, mode):
+        rospy.loginfo("Init Mode")
         self.fnInitMode()
 
     def fnInitMode(self):                                                       # starts only when the program is started initially or any mission is completed
