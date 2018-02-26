@@ -30,6 +30,9 @@ from enum import Enum
 
 class CoreNodeController():
     def __init__(self):
+
+        self.ros_package_path = "/home/leon/catkin_ws/src/autojack/turtlebot3_auto/"
+
         self.sub_mode_control = rospy.Subscriber('/core/decided_mode', UInt8, self.cbReceiveMode, queue_size=1)
 
         self.CurrentMode = Enum('CurrentMode', 'idle lane_following traffic_light parking_lot level_crossing tunnel')
@@ -77,7 +80,7 @@ class CoreNodeController():
         self.launch_detect_traffic_light_launched = False
 
         # self.launch_control_tunnel = roslaunch.scriptapi.ROSLaunch()
-        # self.launch_control_tunnel = roslaunch.parent.ROSLaunchParent(uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_control/launch/turtlebot3_auto_control_tunnel.launch"])     
+        # self.launch_control_tunnel = roslaunch.parent.ROSLaunchParent(uuid, [self.ros_package_path + "turtlebot3_auto_control/launch/turtlebot3_auto_control_tunnel.launch"])     
         # self.launch_control_tunnel_launched = False
 #</editor-fold>
 
@@ -520,7 +523,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_camera_launched == False:
                     self.launch_camera = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_camera = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_camera/launch/turtlebot3_auto_camera_calibration.launch"])
+                    self.launch_camera = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_camera/launch/turtlebot3_auto_camera_calibration.launch"])
                     self.launch_camera_launched = True
                     self.launch_camera.start()
                 else:
@@ -535,7 +538,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_detect_sign_launched == False:
                     self.launch_detect_sign = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_sign = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_detect/launch/turtlebot3_auto_detect_sign.launch"])
+                    self.launch_detect_sign = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_detect/launch/turtlebot3_auto_detect_sign.launch"])
                     self.launch_detect_sign_launched = True
                     self.launch_detect_sign.start()
                 else:
@@ -550,7 +553,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_detect_lane_launched == False:
                     self.launch_detect_lane = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_lane = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_detect/launch/turtlebot3_auto_detect_lane.launch"])
+                    self.launch_detect_lane = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_detect/launch/turtlebot3_auto_detect_lane.launch"])
                     self.launch_detect_lane_launched = True
                     self.launch_detect_lane.start()
                 else:
@@ -565,7 +568,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_control_lane_launched == False:
                     self.launch_control_lane = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_control_lane = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_control/launch/turtlebot3_auto_control_lane.launch"])
+                    self.launch_control_lane = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_control/launch/turtlebot3_auto_control_lane.launch"])
                     self.launch_control_lane_launched = True
                     self.launch_control_lane.start()
                 else:
@@ -580,7 +583,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_detect_parking_launched == False:
                     self.launch_detect_parking = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_parking = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_detect/launch/turtlebot3_auto_detect_parking.launch"])
+                    self.launch_detect_parking = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_detect/launch/turtlebot3_auto_detect_parking.launch"])
                     self.launch_detect_parking_launched = True
                     self.launch_detect_parking.start()
                 else:
@@ -595,7 +598,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_control_parking_launched == False:
                     self.launch_control_parking = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_control_parking = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_control/launch/turtlebot3_auto_control_parking.launch"])     
+                    self.launch_control_parking = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_control/launch/turtlebot3_auto_control_parking.launch"])     
                     self.launch_control_parking_launched = True
                     self.launch_control_parking.start()
                 else:
@@ -610,7 +613,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_detect_level_launched == False:
                     self.launch_detect_level = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_level = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_detect/launch/turtlebot3_auto_detect_level.launch"])     
+                    self.launch_detect_level = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_detect/launch/turtlebot3_auto_detect_level.launch"])     
                     self.launch_detect_level_launched = True
                     self.launch_detect_level.start()
                 else:
@@ -625,7 +628,7 @@ class CoreNodeController():
         #     if is_start == True:
         #         if self.launch_control_level_launched == False:
         #             self.launch_control_level = roslaunch.scriptapi.ROSLaunch()
-        #             self.launch_control_level = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_control/launch/turtlebot3_auto_control_level.launch"])     
+        #             self.launch_control_level = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_control/launch/turtlebot3_auto_control_level.launch"])     
         #             self.launch_control_level_launched = True
         #             self.launch_control_level.start()
         #         else:
@@ -640,7 +643,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_detect_traffic_light_launched == False:
                     self.launch_detect_traffic_light = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_detect_traffic_light = roslaunch.parent.ROSLaunchParent(self.uuid, ["/home/leon/catkin_ws/src/autojack/turtlebot3_auto/turtlebot3_auto_detect/launch/turtlebot3_auto_detect_traffic_light.launch"])     
+                    self.launch_detect_traffic_light = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_auto_detect/launch/turtlebot3_auto_detect_traffic_light.launch"])     
                     self.launch_detect_traffic_light_launched = True
                     self.launch_detect_traffic_light.start()
                 else:
