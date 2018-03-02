@@ -1,0 +1,41 @@
+!!python/object/new:dynamic_reconfigure.encoding.Config
+dictitems:
+  ISO: 889
+  awb_mode: tungsten
+  brightness: 59
+  contrast: 50
+  exposureCompensation: 0
+  exposure_mode: antishake
+  groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+    dictitems:
+      ISO: 889
+      awb_mode: tungsten
+      brightness: 59
+      contrast: 50
+      exposureCompensation: 0
+      exposure_mode: antishake
+      groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      hFlip: false
+      id: 0
+      name: Default
+      parameters: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      parent: 0
+      saturation: 0
+      sharpness: 0
+      shutterSpeed: 25000
+      state: true
+      type: ''
+      vFlip: false
+      videoStabilisation: false
+      zoom: 1.0
+    state: []
+  hFlip: false
+  saturation: 0
+  sharpness: 0
+  shutterSpeed: 25000
+  vFlip: false
+  videoStabilisation: false
+  zoom: 1.0
+state: []

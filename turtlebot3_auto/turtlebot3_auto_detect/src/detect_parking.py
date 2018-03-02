@@ -135,11 +135,6 @@ class DetectParking():
 
         self.pub_parking_lot_return.publish(msg_pub_parking_lot_return)
 
-
-    def fnParkingLotOrder(self):
-        while True:
-            self.fnFindDotLine()
-
     def cbParkingFinished(self, parking_finished_msg):
         self.is_parking_finished = True
 

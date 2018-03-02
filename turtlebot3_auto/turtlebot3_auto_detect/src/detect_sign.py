@@ -41,7 +41,7 @@ class DetectSign():
         self.fnPreproc()
 
         self.showing_plot_track = "off"
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
+        self.showing_images = "on" # you can choose showing images or not by "on", "off"
 
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
         self.pub_image_traffic_sign_type = "raw" # you can choose image type "compressed", "raw"
@@ -53,20 +53,18 @@ class DetectSign():
             # subscribes raw image
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.callback, queue_size = 1)
 
-        self.pub_sign = rospy.Publisher('/detect/traffic_sign', UInt8, queue_size=1)
+        self.pub_traffic_sign = rospy.Publisher('/detect/traffic_sign', UInt8, queue_size=1)
 
         if self.pub_image_traffic_sign_type == "compressed":
             self.pub_image_traffic_sign = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
         elif self.pub_image_traffic_sign_type == "raw":
             self.pub_image_traffic_sign = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
-        self.pub_traffic_sign = rospy.Publisher('/detect/traffic_sign', UInt8, queue_size = 1)
-
         self.cvBridge = CvBridge()
 
         self.TrafficSign = Enum('TrafficSign', 'divide stop parking tunnel')
 
-        self.counter = 0
+        self.counter = 1
 
         self.RECOG_MIN_COUNT = 3
 
@@ -109,6 +107,8 @@ class DetectSign():
         # if self.counter % 3 != 0:
         #     self.counter += 1
         #     return
+        # else:
+        #     self.counter = 1
 
         if self.sub_image_original_type == "compressed":
             #converting compressed image to opencv image
@@ -151,16 +151,16 @@ class DetectSign():
             if mse < MIN_MSE_DECISION:
                 self.recog_counter_1 += 1
 
-                # rospy.loginfo("Found1! %d %d", self.recog_counter_1, mse)
+                rospy.loginfo("Found1! %d %d", self.recog_counter_1, mse)
 
                 if self.recog_counter_1 == self.RECOG_MIN_COUNT:
                     self.recog_counter_1 = 0
                     msg_sign = UInt8()
                     msg_sign.data = self.TrafficSign.divide.value
 
-                    self.pub_sign.publish(msg_sign)
+                    self.pub_traffic_sign.publish(msg_sign)
 
-                    # rospy.loginfo("TrafficSign 1")
+                    rospy.loginfo("TrafficSign 1")
 
 
         else:
@@ -190,16 +190,16 @@ class DetectSign():
             if mse < MIN_MSE_DECISION:
                 self.recog_counter_2 += 1
 
-                # rospy.loginfo("Found2! %d %d", self.recog_counter_2, mse)
+                rospy.loginfo("Found2! %d %d", self.recog_counter_2, mse)
 
                 if self.recog_counter_2 == self.RECOG_MIN_COUNT:
                     self.recog_counter_2 = 0
                     msg_sign = UInt8()
                     msg_sign.data = self.TrafficSign.stop.value
 
-                    self.pub_sign.publish(msg_sign)
+                    self.pub_traffic_sign.publish(msg_sign)
 
-                    # rospy.loginfo("TrafficSign 2")
+                    rospy.loginfo("TrafficSign 2")
 
 
         else:
@@ -236,9 +236,9 @@ class DetectSign():
                     msg_sign = UInt8()
                     msg_sign.data = self.TrafficSign.parking.value
 
-                    self.pub_sign.publish(msg_sign)
+                    self.pub_traffic_sign.publish(msg_sign)
 
-                    # rospy.loginfo("TrafficSign 3")
+                    rospy.loginfo("TrafficSign 3")
 
 
         else:
@@ -268,16 +268,16 @@ class DetectSign():
             if mse < MIN_MSE_DECISION:
                 self.recog_counter_4 += 1
 
-                # rospy.loginfo("Found4! %d %d", self.recog_counter_4, mse)
+                rospy.loginfo("Found4! %d %d", self.recog_counter_4, mse)
 
                 if self.recog_counter_4 == self.RECOG_MIN_COUNT:
                     self.recog_counter_4 = 0
                     msg_sign = UInt8()
                     msg_sign.data = self.TrafficSign.tunnel.value
 
-                    self.pub_sign.publish(msg_sign)
+                    self.pub_traffic_sign.publish(msg_sign)
 
-                    # rospy.loginfo("TrafficSign 4")
+                    rospy.loginfo("TrafficSign 4")
 
         else:
             # print "Not enough matches are found 4 - %d/%d" % (len(good4),MIN_MATCH_COUNT)

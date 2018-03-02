@@ -1,10 +1,19 @@
 <launch>
-  <!-- run pi camera -->
-  <include file="$(find turtlebot3_auto_camera)/launch/turtlebot3_auto_camera_pi.launch" />
-  
+  <!-- launch turtlebot3_auto_camera_pi.launch in the raspberry pi before launch this file -->
+
+  <arg name="calibration_mode" default="$(env TURTLEBOT3_AUTO_IN_CALIB)" doc="calibration_mode type [calibration, action]"/>
+
   <!-- image transport from compressed to raw -->
   <node pkg="image_transport" type="republish" name="republish" args="compressed in:=camera/image raw out:=camera/image" />
 
+  <!-- run the following under calibration mode -->
   <!-- camera calibration uses raw image -->
-  <node pkg="camera_calibration" type="cameracalibrator.py" name="cameracalibrator" args="--size 7x5 --square 0.029 image:=/camera/image camera:=/camera" output="screen"/>
+  <node if="$(eval calibration_mode == 'calibration')" pkg="camera_calibration" type="cameracalibrator.py" name="cameracalibrator" args="--size 7x5 --square 0.029 image:=/camera/image camera:=/camera" output="screen"/>
+
+  <!-- run the following under action mode -->
+  <!-- image rectification -->
+  <node ns="camera" pkg="image_proc" type="image_proc" name="image_proc" args="_approximate_sync:=true" output="screen">
+    <remap from="image_raw" to="image" />
+    <param name="queue_size" value="20" />
+  </node>
 </launch>

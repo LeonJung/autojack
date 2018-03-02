@@ -1,4 +1,31 @@
 <launch>
-  <!-- image to ground -->
-  <node pkg="turtlebot3_auto_camera" type="image_to_ground.py" name="image_to_ground" output="screen" />
+  <!-- launch turtlebot3_auto_intrinsic_camera_calibration.launch in the raspberry pi before launch this file -->
+
+  <arg name="calibration_mode" default="$(env TURTLEBOT3_AUTO_OUT_CALIB)" doc="calibration_mode type [calibration, action]"/>
+
+  <group ns="camera">
+    <!-- image brightness & contrast compensation of ground-projected image -->
+    <node if="$(eval calibration_mode == 'action')" pkg="turtlebot3_auto_camera" type="image_compensation.py" name="image_compensation" output="screen">
+      <remap from="/camera/image_input" to="/camera/image_rect_color" />
+      <remap from="/camera/image_input/compressed" to="/camera/image_rect_color/compressed" />
+      <remap from="/camera/image_output" to="/camera/image_compensated" />
+      <remap from="/camera/image_output/compressed" to="/camera/image_compensated/compressed" />
+    </node>
+
+    <!-- image ground projection -->
+    <node pkg="turtlebot3_auto_camera" type="image_projection.py" name="image_projection" output="screen">
+      <remap from="/camera/image_input" to="/camera/image_rect_color" />
+      <remap from="/camera/image_input/compressed" to="/camera/image_rect_color/compressed" />
+      <remap from="/camera/image_output" to="/camera/image_projected" />
+      <remap from="/camera/image_output/compressed" to="/camera/image_projected/compressed" />
+    </node>
+
+    <!-- image brightness & contrast compensation of ground-projected image -->
+    <node if="$(eval calibration_mode == 'action')" pkg="turtlebot3_auto_camera" type="image_compensation.py" name="image_compensation_projected" output="screen">
+      <remap from="/camera/image_input" to="/camera/image_projected" />
+      <remap from="/camera/image_input/compressed" to="/camera/image_projected/compressed" />
+      <remap from="/camera/image_output" to="/camera/image_projected_compensated" />
+      <remap from="/camera/image_output/compressed" to="/camera/image_projected_compensated/compressed" />
+    </node>
+  </group>
 </launch>

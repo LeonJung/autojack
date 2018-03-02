@@ -1,0 +1,7 @@
+<launch>
+  <!-- tunnel detection -->
+  <node pkg="turtlebot3_auto_detect" type="detect_tunnel.py" name="detect_tunnel" output="screen">
+    <!-- <remap from="/detect/image_input" to="/camera/image_projected_compensated" />
+    <remap from="/detect/image_input/compressed" to="/camera/image_projected_compensated/compressed" /> -->
+  </node>
+</launch>

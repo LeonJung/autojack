@@ -73,7 +73,7 @@ def fnCheckDistanceIsEqual(point1, point2, point3):
 
 class DetectLevel():
     def __init__(self):
-        self.showing_final_image = "off"
+        self.showing_final_image = "on"
         self.showing_trackbar = "off"
         self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
@@ -97,11 +97,11 @@ class DetectLevel():
 
         self.StepOfLevelCrossing = Enum('StepOfLevelCrossing', 'searching_stop_sign searching_level watching_level stop pass_level')
 
-        self.Hue_l_red = 0
-        self.Hue_h_red = 8
-        self.Saturation_l_red = 138
-        self.Saturation_h_red = 255
-        self.Lightness_l_red = 0
+        self.Hue_l_red = 132
+        self.Hue_h_red = 180
+        self.Saturation_l_red = 95
+        self.Saturation_h_red = 217
+        self.Lightness_l_red = 58
         self.Lightness_h_red = 255
 
         self.cvBridge = CvBridge()
@@ -111,13 +111,13 @@ class DetectLevel():
 
         self.is_level_crossing_finished = False
 
-        # rospy.sleep(1)
+        rospy.sleep(1)
 
-        # loop_rate = rospy.Rate(15)
-        # while not rospy.is_shutdown():
-        #     self.fnFindLevel()
+        loop_rate = rospy.Rate(15)
+        while not rospy.is_shutdown():
+            self.fnFindLevel()
 
-        #     loop_rate.sleep()
+            loop_rate.sleep()
 
     def cbGetImage(self, image_msg):
         if self.sub_image_original_type == "compressed":

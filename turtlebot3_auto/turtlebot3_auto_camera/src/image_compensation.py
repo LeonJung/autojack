@@ -28,7 +28,7 @@ from sensor_msgs.msg import Image, CompressedImage
 class ImageCompensation():
     def __init__(self):
         self.image_output = "off"           # "on" / "off"
-        self.sub_image_type = "raw"         # "compressed" / "raw"
+        self.sub_image_type = "compressed"         # "compressed" / "raw"
         self.pub_image_type = "raw"         # "compressed" / "raw"
 
         if self.sub_image_type == "compressed":

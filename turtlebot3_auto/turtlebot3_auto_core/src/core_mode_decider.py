@@ -62,9 +62,9 @@ class CoreModeDecider():
 
     def fnDecideMode(self, invoked_object, msg_data):                       # starts only when the traffic sign / traffic light is detected & current_mode is lane_following
         if self.current_mode == self.CurrentMode.lane_following.value:
-            if invoked_object == self.InvokedObject.traffic_light.value:    # Traffic Light detected
-                self.current_mode = self.CurrentMode.traffic_light.value
-            elif invoked_object == self.InvokedObject.traffic_sign.value:   # Any Sign detected
+            # if invoked_object == self.InvokedObject.traffic_light.value:    # Traffic Light detected
+            #     self.current_mode = self.CurrentMode.traffic_light.value
+            if invoked_object == self.InvokedObject.traffic_sign.value:   # Any Sign detected
                 if msg_data.data == self.TrafficSign.divide.value:          # Divide Sign detected
                     pass
                 elif msg_data.data == self.TrafficSign.stop.value:          # Stop Sign detected
