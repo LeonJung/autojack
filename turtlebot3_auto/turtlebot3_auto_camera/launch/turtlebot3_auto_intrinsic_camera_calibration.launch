@@ -1,5 +1,6 @@
 <launch>
   <!-- launch turtlebot3_auto_camera_pi.launch in the raspberry pi before launch this file -->
+  <!-- launch this in remote pc when you are doing calibration-->
 
   <arg name="calibration_mode" default="$(env TURTLEBOT3_AUTO_IN_CALIB)" doc="calibration_mode type [calibration, action]"/>
 
