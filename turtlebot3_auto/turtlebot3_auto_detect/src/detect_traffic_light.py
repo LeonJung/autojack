@@ -75,16 +75,25 @@ class DetectTrafficLight():
     def __init__(self):
         self.showing_final_image = "off"
         self.showing_trackbar = "off"
-        self.sub_image_original_type = "compressed" # you can choose image type "compressed", "raw"
+        self.sub_image_type = "raw"                 # "compressed" / "raw"
+        self.pub_image_type = "raw"          # "compressed" / "raw"
+
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
-        if self.sub_image_original_type == "compressed":
+        if self.sub_image_type == "compressed":
             # subscribes compressed image
             self.sub_image_original = rospy.Subscriber('/detect/image_input/compressed', CompressedImage, self.cbGetImage, queue_size = 1)
-        elif self.sub_image_original_type == "raw":
+        elif self.sub_image_type == "raw":
             # subscribes raw image
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.cbGetImage, queue_size = 1)
  
+        if self.pub_image_type == "compressed":
+            # publishes compensated image in compressed type 
+            self.pub_image_traffic_light = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
+        elif self.pub_image_type == "raw":
+            # publishes compensated image in raw type
+            self.pub_image_traffic_light = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
+
         # self.sub_traffic_light_order = rospy.Subscriber('/detect/traffic_light_order', UInt8, self.cbTrafficLightOrder, queue_size=1)
 
         self.sub_traffic_light_finished = rospy.Subscriber('/control/traffic_light_finished', UInt8, self.cbTrafficLightFinished, queue_size = 1)
@@ -122,6 +131,7 @@ class DetectTrafficLight():
         self.traffic_light_end = "no"
         self.state = "run"
 
+        self.counter = 1
 
         # rospy.sleep(1)
 
@@ -132,7 +142,14 @@ class DetectTrafficLight():
         #     loop_rate.sleep()
 
     def cbGetImage(self, image_msg):
-        if self.sub_image_original_type == "compressed":
+        # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
+        if self.counter % 3 != 0:
+            self.counter += 1
+            return
+        else:
+            self.counter = 1
+
+        if self.sub_image_type == "compressed":
             np_arr = np.fromstring(image_msg.data, np.uint8)
             self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         else:
@@ -144,37 +161,38 @@ class DetectTrafficLight():
         cv_image_mask = self.fnMaskGreenTrafficLight()
         cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
 
-        ret = self.fnFindCircleOfTrafficLight(cv_image_mask, 'green')
+        status1 = self.fnFindCircleOfTrafficLight(cv_image_mask, 'green')
 
-        if ret == 1 or ret == 5:
+        if status1 == 1 or status1 == 5:
+            self.stop_count = 0
             self.green_count += 1
         else:
             self.green_count = 0
+        
+            cv_image_mask = self.fnMaskYellowTrafficLight()
+            cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
 
-        cv_image_mask = self.fnMaskYellowTrafficLight()
-        cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
+            status2 = self.fnFindCircleOfTrafficLight(cv_image_mask, 'yellow')
+            if status2 == 2:
+                self.yellow_count += 1
+            else:
+                self.yellow_count = 0
 
-        ret = self.fnFindCircleOfTrafficLight(cv_image_mask, 'yellow')
-        if ret == 2:
-            self.yellow_count += 1
-        else:
-            self.yellow_count = 0
+                cv_image_mask = self.fnMaskRedTrafficLight()
+                cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
 
-        cv_image_mask = self.fnMaskRedTrafficLight()
-        cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
-
-        ret = self.fnFindCircleOfTrafficLight(cv_image_mask, 'red')
-        if ret == 3:
-            self.red_count += 1
-        elif ret == 4:
-            self.red_count = 0
-            self.stop_count += 1
-        else:
-            self.red_count = 0
-            self.stop_count = 0
+                status3 = self.fnFindCircleOfTrafficLight(cv_image_mask, 'red')
+                if status3 == 3:
+                    self.red_count += 1
+                elif status3 == 4:
+                    self.red_count = 0
+                    self.stop_count += 1
+                else:
+                    self.red_count = 0
+                    self.stop_count = 0
 
 
-        rospy.loginfo("G:%d Y:%d R:%d", self.green_count, self.yellow_count, self.red_count)
+        # rospy.loginfo("G:%d Y:%d R:%d", self.green_count, self.yellow_count, self.red_count)
 
         # if self.green_count > self.green_max:
         #     self.green_max = self.green_count
@@ -187,29 +205,41 @@ class DetectTrafficLight():
 
         # rospy.loginfo("MAX G:%d Y:%d R:%d", self.green_max, self.yellow_max, self.red_max)
 
-        if self.green_count > 25:
+        if self.green_count > 10:
             msg_pub_max_vel = Float64()
             msg_pub_max_vel.data = 0.19
             self.pub_max_vel.publish(msg_pub_max_vel)
-            rospy.loginfo("GO")
+            rospy.loginfo("GREEN")
+            cv2.putText(self.cv_image,"GREEN", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (80, 255, 0))
 
-        if self.yellow_count > 25:
+        if self.yellow_count > 10:
             msg_pub_max_vel = Float64()
-            msg_pub_max_vel.data = 0.06
+            msg_pub_max_vel.data = 0.05
             self.pub_max_vel.publish(msg_pub_max_vel)
-            rospy.loginfo("WARN")
+            rospy.loginfo("YELLOW")
+            cv2.putText(self.cv_image,"YELLOW", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 255, 255))
 
-        if self.red_count > 25:
+        if self.red_count > 8:
             msg_pub_max_vel = Float64()
-            msg_pub_max_vel.data = 0.04
+            msg_pub_max_vel.data = 0.03
             self.pub_max_vel.publish(msg_pub_max_vel)
-            rospy.loginfo("STEADY")
+            rospy.loginfo("RED")
+            cv2.putText(self.cv_image,"RED", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
 
-        if self.stop_count > 25:
+        if self.stop_count > 4:
             msg_pub_max_vel = Float64()
             msg_pub_max_vel.data = 0.0
             self.pub_max_vel.publish(msg_pub_max_vel)  
             rospy.loginfo("STOP")
+            cv2.putText(self.cv_image,"STOP", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
+
+        if self.pub_image_type == "compressed":
+            # publishes compensated image in compressed type
+            self.pub_image_traffic_light.publish(self.cvBridge.cv2_to_compressed_imgmsg(self.cv_image, "jpg"))
+
+        elif self.pub_image_type == "raw":
+            # publishes compensated image in raw type
+            self.pub_image_traffic_light.publish(self.cvBridge.cv2_to_imgmsg(self.cv_image, "bgr8"))
 
 
         # msg_pub_max_vel = Float64()
@@ -414,19 +444,19 @@ class DetectTrafficLight():
             frame = cv2.line(frame, (col2, low2), (col2, low1), (255, 255, 0), 5)
             frame = cv2.line(frame, (col2, low1), (col1, low1), (255, 255, 0), 5)
 
-        # if detected more than 1 red light
+        # if detected more than 1 light
         for i in range(len(keypts)):
-            point_col = int(keypts[i].pt[0])
-            point_low = int(keypts[i].pt[1])
+            self.point_col = int(keypts[i].pt[0])
+            self.point_low = int(keypts[i].pt[1])
 
-            if point_col > col1 and point_col < col2 and point_low > low1 and point_low < low2:
+            if self.point_col > col1 and self.point_col < col2 and self.point_low > low1 and self.point_low < low2:
                 if find_color == 'green':
                     status = 1
                 elif find_color == 'yellow':
                     status = 2
                 elif find_color == 'red':
                     status = 3
-            elif point_col > col2 and point_col < col3 and point_low > low1 and point_low < low3:
+            elif self.point_col > col2 and self.point_col < col3 and self.point_low > low1 and self.point_low < low3:
                 if find_color == 'red':
                     status = 4
                 elif find_color == 'green':
@@ -435,18 +465,6 @@ class DetectTrafficLight():
                 status = 6
 
         return status
-
-        # if self.red_count > 0:
-        #     self.red_count -= 1
-
-        # if self.detecting_color == 'red':
-        #     self.detecting_color = 'green'
-        # elif self.detecting_color == 'green':
-        #     self.detecting_color = 'red'
-
-
-
-        # return is_level_detected, is_level_close, is_level_opened
 
     def cbTrafficLightFinished(self, traffic_light_finished_msg):
         self.is_traffic_light_finished = True

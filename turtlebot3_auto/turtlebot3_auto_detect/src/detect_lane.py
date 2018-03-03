@@ -41,7 +41,7 @@ class DetectLane():
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.showing_trackbar = "off"
 
-        self.showing_final_image = "on"
+        self.showing_final_image = "off"
         self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
         self.pub_image_type = "compressed" # you can choose image type "compressed", "raw"
 
@@ -53,8 +53,10 @@ class DetectLane():
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.cbFindLane, queue_size = 1)
 
         if self.pub_image_type == "compressed":
+            # publishes lane image in compressed type 
             self.pub_image_lane = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
         elif self.pub_image_type == "raw":
+            # publishes lane image in raw type
             self.pub_image_lane = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
         self.pub_lane = rospy.Publisher('/detect/lane', Float64, queue_size = 1)
@@ -243,58 +245,24 @@ class DetectLane():
 
 
 
-        # publishing calbrated and Bird's eye view as compressed image
         if self.pub_image_type == "compressed":
-            # publishes lane image in compressed type
-            # self.pub_image_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(final, "jpg"))
-
-
+            # publishes compensated image in compressed type
             if is_center_x_exist == True:
-                # msg_final_img = CompressedImage()
-                # msg_final_img.header.stamp = rospy.Time.now()
-                # msg_final_img.format = "jpeg"
-                # msg_final_img.data = np.array(cv2.imencode('.jpg', final)[1]).tostring()
-                # self.pub_image_lane.publish(msg_final_img)
-
                 msg_desired_center = Float64()
                 msg_desired_center.data = centerx.item(350) # 450
-
-                # print(msg_desired_center.data)
-                # msg_desired_center.data = desired_center.item(300)
-
-                # msg_off_center = Float64()
-                # msg_off_center.data = off_center
-
                 self.pub_lane.publish(msg_desired_center)
-                # self._pub4.publish(msg_off_center)
 
-                # msg_homography = CompressedImage()
-                # msg_homography.header.stamp = rospy.Time.now()
-                # msg_homography.format = "jpeg"
-                # msg_homography.data = np.array(cv2.imencode('.jpg', cv_Homography)[1]).tostring()
-                # self.pub_image_lane.publish(msg_homography)
+            self.pub_image_lane.publish(self.cvBridge.cv2_to_compressed_imgmsg(final, "jpg"))
 
-        # publishing calbrated and Bird's eye view as raw image
         elif self.pub_image_type == "raw":
-            # publishes lane image in compressed type
-            # self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
-
+            # publishes compensated image in raw type
             if is_center_x_exist == True:
                 msg_desired_center = Float64()
-
                 msg_desired_center.data = centerx.item(350) # 350
-
-                # print(msg_desired_center.data)
-
-                # msg_off_center = Float64()
-                # msg_off_center.data = off_center
-
                 self.pub_lane.publish(msg_desired_center)
-                # self._pub4.publish(msg_off_center)
 
-                # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "bgr8"))
-                # self._pub4.publish(self.bridge.cv2_to_imgmsg(cv_Homography, "mono8"))
-        
+            self.pub_image_lane.publish(self.cvBridge.cv2_to_imgmsg(final, "bgr8"))
+
 
 
 

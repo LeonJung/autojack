@@ -20,7 +20,7 @@ class ControlParking():
         self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
         self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
 
-        self.sub_lane = rospy.Subscriber('/control/lane', Float64, self.callback, queue_size = 1)
+        # self.sub_lane = rospy.Subscriber('/control/lane', Float64, self.callback, queue_size = 1)
 
         self.sub_parking_start = rospy.Subscriber('/control/parking_start', UInt8, self.cbParkingStart, queue_size = 1)
 
@@ -54,9 +54,9 @@ class ControlParking():
 
         rospy.on_shutdown(self.fnShutDown)
 
-    def callback(self, desired_center):
-        if self.is_step_parking == False:
-            self.fnLaneFollow(desired_center)
+    # def callback(self, desired_center):
+    #     if self.is_step_parking == False:
+    #         self.fnLaneFollow(desired_center)
 
     def cbParkingStart(self, parking_start_msg):
         self.is_step_parking = True

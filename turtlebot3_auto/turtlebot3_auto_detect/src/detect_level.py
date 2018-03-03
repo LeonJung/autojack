@@ -111,6 +111,8 @@ class DetectLevel():
 
         self.is_level_crossing_finished = False
 
+        self.counter = 1
+
         rospy.sleep(1)
 
         loop_rate = rospy.Rate(15)
@@ -120,6 +122,13 @@ class DetectLevel():
             loop_rate.sleep()
 
     def cbGetImage(self, image_msg):
+        # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
+        if self.counter % 3 != 0:
+            self.counter += 1
+            return
+        else:
+            self.counter = 1
+
         if self.sub_image_original_type == "compressed":
             np_arr = np.fromstring(image_msg.data, np.uint8)
             self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)

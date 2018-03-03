@@ -29,7 +29,7 @@ class CoreModeDecider():
     def __init__(self):
         # subscribes : invoking object detected
         self.sub_traffic_sign = rospy.Subscriber('/detect/traffic_sign', UInt8, self.cbInvokedByTrafficSign, queue_size=1)
-        self.sub_traffic_light = rospy.Subscriber('/detect/traffic_light', UInt8, self.cbInvokedByTrafficLight, queue_size=1)
+        # self.sub_traffic_light = rospy.Subscriber('/detect/traffic_light', UInt8, self.cbInvokedByTrafficLight, queue_size=1)
 
         self.sub_returned_mode = rospy.Subscriber('/core/returned_mode', UInt8, self.cbReturnedMode, queue_size=1)
 
@@ -45,12 +45,12 @@ class CoreModeDecider():
     # Invoke if traffic sign is detected
     def cbInvokedByTrafficSign(self, traffic_sign_type_msg):
         self.fnDecideMode(self.InvokedObject.traffic_sign.value, traffic_sign_type_msg)
-        rospy.loginfo("self.current_mode = %d", self.current_mode)
-        rospy.loginfo("DETECTED")
+        rospy.loginfo("Traffic sign detected")
 
     # Invoke if traffic light is detected
-    def cbInvokedByTrafficLight(self, traffic_light_type_msg):
-        self.fnDecideMode(self.InvokedObject.traffic_light.value, traffic_light_type_msg)
+    # def cbInvokedByTrafficLight(self, traffic_light_type_msg):
+    #     self.fnDecideMode(self.InvokedObject.traffic_light.value, traffic_light_type_msg)
+    #     rospy.loginfo("Traffic light detected")
 
     def cbReturnedMode(self, mode):
         rospy.loginfo("Init Mode")
@@ -65,9 +65,7 @@ class CoreModeDecider():
             # if invoked_object == self.InvokedObject.traffic_light.value:    # Traffic Light detected
             #     self.current_mode = self.CurrentMode.traffic_light.value
             if invoked_object == self.InvokedObject.traffic_sign.value:   # Any Sign detected
-                if msg_data.data == self.TrafficSign.divide.value:          # Divide Sign detected
-                    pass
-                elif msg_data.data == self.TrafficSign.stop.value:          # Stop Sign detected
+                if msg_data.data == self.TrafficSign.stop.value:            # Stop Sign detected
                     self.current_mode = self.CurrentMode.level_crossing.value
                 elif msg_data.data == self.TrafficSign.parking.value:       # Parking Sign detected
                     self.current_mode = self.CurrentMode.parking_lot.value
