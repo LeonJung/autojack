@@ -73,18 +73,27 @@ def fnCheckDistanceIsEqual(point1, point2, point3):
 
 class DetectLevel():
     def __init__(self):
-        self.showing_final_image = "on"
+        self.showing_final_image = "off"
         self.showing_trackbar = "off"
-        self.sub_image_original_type = "raw" # you can choose image type "compressed", "raw"
+        self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
+        self.pub_image_type = "raw" # you can choose image type "compressed", "raw"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
-        if self.sub_image_original_type == "compressed":
+        if self.sub_image_type == "compressed":
             # subscribes compressed image
             self.sub_image_original = rospy.Subscriber('/detect/image_input/compressed', CompressedImage, self.cbGetImage, queue_size = 1)
-        elif self.sub_image_original_type == "raw":
+        elif self.sub_image_type == "raw":
             # subscribes raw image
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.cbGetImage, queue_size = 1)
  
+        if self.pub_image_type == "compressed":
+            # publishes level image in compressed type 
+            self.pub_image_level = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
+        elif self.pub_image_type == "raw":
+            # publishes level image in raw type
+            self.pub_image_level = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
+
+
         self.sub_level_crossing_order = rospy.Subscriber('/detect/level_crossing_order', UInt8, self.cbLevelCrossingOrder, queue_size=1)
 
         self.sub_level_crossing_finished = rospy.Subscriber('/control/level_crossing_finished', UInt8, self.cbLevelCrossingFinished, queue_size = 1)
@@ -129,7 +138,7 @@ class DetectLevel():
         else:
             self.counter = 1
 
-        if self.sub_image_original_type == "compressed":
+        if self.sub_image_type == "compressed":
             np_arr = np.fromstring(image_msg.data, np.uint8)
             self.cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         else:
@@ -263,17 +272,44 @@ class DetectLevel():
         mask = cv2.inRange(hsv, lower_red, upper_red)
 
         # Bitwise-AND mask and original image
-        res = cv2.bitwise_and(image, image, mask = mask)
+        # res = cv2.bitwise_and(image, image, mask = mask)
+
+        ## TODO:: expand range for red
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+        # Convert BGR to HSV
+        Hue_l = 0
+        Hue_h = 23
+        Saturation_l = 95
+        Saturation_h = 217
+        Lightness_l = 58
+        Lightness_h = 255
+
+        # define range of red color in HSV
+        lower_red = np.array([Hue_l, Saturation_l, Lightness_l])
+        upper_red = np.array([Hue_h, Saturation_h, Lightness_h])
+
+        # Threshold the HSV image to get only red colors
+        mask2 = cv2.inRange(hsv, lower_red, upper_red)
+
+        # Bitwise-AND mask and original image
+        # res2 = cv2.bitwise_and(image, image, mask = mask2)
+
+        mask3 = cv2.bitwise_or(mask, mask2, mask = None)
+
+
 
         # cv2.imshow('frame_red',image), cv2.waitKey(1)
         if self.showing_images == "on":
-            cv2.imshow('mask_red',mask), cv2.waitKey(1)
+            # cv2.imshow('mask_red',mask), cv2.waitKey(1)
+            # cv2.imshow('mask_red2',mask2), cv2.waitKey(1)
+            cv2.imshow('mask_red3',mask3), cv2.waitKey(1)
             # cv2.resizeWindow('mask_red', 640, 480)
             # cv2.imshow('res_red',res), cv2.waitKey(1)
 
-        mask = cv2.bitwise_not(mask)
+        mask3 = cv2.bitwise_not(mask3)
 
-        return mask
+        return mask3
 
 
     def fnFindRectOfLevel(self, mask):
@@ -365,9 +401,11 @@ class DetectLevel():
 
         if self.stop_bar_count > 0:
             self.stop_bar_count -= 1
-        if self.stop_bar_count == 1:
+        if self.stop_bar_count == 0:
             is_level_opened = True
             self.stop_bar_state = 'go'
+
+        # rospy.loginfo("self.stop_bar_count = %d", self.stop_bar_count)
         #     message = Stop_bar()
         #     message.state = self.stop_bar_state
         #     message.distance = 0
@@ -379,6 +417,15 @@ class DetectLevel():
 
         if self.showing_final_image == "on":
             cv2.imshow('frame', frame), cv2.waitKey(1)
+
+        if self.pub_image_type == "compressed":
+            # publishes level image in compressed type
+            self.pub_image_level.publish(self.cvBridge.cv2_to_compressed_imgmsg(frame, "jpg"))
+
+        elif self.pub_image_type == "raw":
+            # publishes level image in raw type
+            self.pub_image_level.publish(self.cvBridge.cv2_to_imgmsg(frame, "bgr8"))
+
 
         return is_level_detected, is_level_close, is_level_opened
 

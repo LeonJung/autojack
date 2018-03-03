@@ -80,6 +80,8 @@ class DetectTrafficLight():
 
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
+        self.counter = 1
+        
         if self.sub_image_type == "compressed":
             # subscribes compressed image
             self.sub_image_original = rospy.Subscriber('/detect/image_input/compressed', CompressedImage, self.cbGetImage, queue_size = 1)
@@ -131,7 +133,6 @@ class DetectTrafficLight():
         self.traffic_light_end = "no"
         self.state = "run"
 
-        self.counter = 1
 
         # rospy.sleep(1)
 
@@ -234,11 +235,11 @@ class DetectTrafficLight():
             cv2.putText(self.cv_image,"STOP", (self.point_col, self.point_low), cv2.FONT_HERSHEY_DUPLEX, 0.5, (0, 0, 255))
 
         if self.pub_image_type == "compressed":
-            # publishes compensated image in compressed type
+            # publishes traffic light image in compressed type
             self.pub_image_traffic_light.publish(self.cvBridge.cv2_to_compressed_imgmsg(self.cv_image, "jpg"))
 
         elif self.pub_image_type == "raw":
-            # publishes compensated image in raw type
+            # publishes traffic light image in raw type
             self.pub_image_traffic_light.publish(self.cvBridge.cv2_to_imgmsg(self.cv_image, "bgr8"))
 
 

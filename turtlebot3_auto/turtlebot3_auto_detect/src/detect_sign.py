@@ -55,8 +55,10 @@ class DetectSign():
         self.pub_traffic_sign = rospy.Publisher('/detect/traffic_sign', UInt8, queue_size=1)
 
         if self.pub_image_type == "compressed":
+            # publishes level image in compressed type 
             self.pub_image_traffic_sign = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
         elif self.pub_image_type == "raw":
+            # publishes level image in raw type
             self.pub_image_traffic_sign = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
         self.cvBridge = CvBridge()

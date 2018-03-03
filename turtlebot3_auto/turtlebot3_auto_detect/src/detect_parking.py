@@ -58,14 +58,15 @@ class DetectParking():
         self.cvBridge = CvBridge()
         self.cv_image = None
 
+        self.is_parking_allowed = False
         self.is_now_parking = False
         self.is_parking_finished = False
 
         self.blink_trigger = 1
         self.blink_count = 0
 
-        self.img1 = cv2.imread('/home/leon/Desktop/parking_unavailable.png', -1)
-        self.img2 = cv2.imread('/home/leon/Desktop/parking_available.png', -1)
+        self.img1 = cv2.imread('/home/leon/Desktop/parking_not_allowed.png', -1)
+        self.img2 = cv2.imread('/home/leon/Desktop/parking_allowed.png', -1)
 
 
 
@@ -78,14 +79,14 @@ class DetectParking():
 
         if self.is_now_parking == True:
             self.blink_count += 1
-            if self.blink_count % 4 == 0:
+            if self.blink_count % 8 == 0:
                 self.blink_trigger = 1 - self.blink_trigger
                 self.blink_count = 0
 
-            if self.is_obstacle_detected == True:
+            if self.is_parking_allowed == False:
                 if self.blink_trigger == 1:
-                    x_offset = 200
-                    y_offset = 50
+                    x_offset = 874
+                    y_offset = 0
 
                     y1, y2 = y_offset, y_offset + self.img1.shape[0]
                     x1, x2 = x_offset, x_offset + self.img1.shape[1]
@@ -99,8 +100,8 @@ class DetectParking():
 
             else:
                 if self.blink_trigger == 1:
-                    x_offset = 200
-                    y_offset = 50
+                    x_offset = 874
+                    y_offset = 0
 
                     y1, y2 = y_offset, y_offset + self.img2.shape[0]
                     x1, x2 = x_offset, x_offset + self.img2.shape[1]
@@ -157,9 +158,11 @@ class DetectParking():
 
             while True:
                 if self.is_obstacle_detected == False:
+                    self.is_parking_allowed = True
                     rospy.loginfo("parking lot is clear")
                     break
                 else:
+                    self.is_parking_allowed = False
                     rospy.loginfo("right side is full")
 
             msg_pub_max_vel = Float64()
