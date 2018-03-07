@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <package>
   <name>turtlebot3_auto_camera</name>
-  <version>0.0.1</version>
-  <description> the package that controls camera on turtlebot3 auto</description>
-
-  <maintainer email="rwjung@robotis.com">Leon Jung</maintainer>
-
-  <license>BSD</license>
-
+  <version>1.0.0</version>
+  <description>
+    TurtleBot3 Auto ROS package that controls Raspberry Pi Camera, and process the image
+  </description>
+  <license>Apache License 2.0</license>
+  <author email="rwjung@robotis.com">Leon RyuWoon Jung</author>
+  <maintainer email="rwjung@robotis.com">Leon RyuWoon Jung</maintainer>
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>

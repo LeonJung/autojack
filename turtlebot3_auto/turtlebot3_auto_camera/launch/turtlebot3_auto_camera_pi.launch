@@ -3,7 +3,7 @@
 
   <!-- run pi camera -->
   <node pkg="raspicam_node" type="raspicam_node" name="camera" output="screen">
-    <rosparam command="load" file="$(find turtlebot3_auto_camera)/cfg/camera.yaml" />
+    <rosparam command="load" file="$(find turtlebot3_auto_camera)/camera_calibration/camera.yaml" />
     <param name="camera_info_url" value="package://turtlebot3_auto_camera/calibration/intrinsic_calibration/camerav2_320x240_30fps.yaml"/>
     <param name="width" value="320"/>
     <param name="height" value="240"/>
