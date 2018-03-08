@@ -25,10 +25,18 @@ import cv2
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, CompressedImage
 
+from dynamic_reconfigure.server import Server
+from turtlebot3_auto_camera.cfg import ImageCompensationParamsConfig
+
 class ImageCompensation():
     def __init__(self):
-        self.image_output = "off"           # "on" / "off"
-        self.sub_image_type = "compressed"         # "compressed" / "raw"
+        self.clip_hist_percent = rospy.get_param("/camera/extrinsic_camera_calibration/clip_hist_percent", 1.)
+
+        self.is_calibration_mode = rospy.get_param("~is_extrinsic_camera_calibration_mode", False)
+        if self.is_calibration_mode == True:
+            srv_image_compensation = Server(ImageCompensationParamsConfig, self.cbGetImageCompensationParam)
+
+        self.sub_image_type = "compressed"  # "compressed" / "raw"
         self.pub_image_type = "raw"         # "compressed" / "raw"
 
         if self.sub_image_type == "compressed":
@@ -47,6 +55,14 @@ class ImageCompensation():
 
         self.cvBridge = CvBridge()
 
+    def cbGetImageCompensationParam(self, config, level):
+        rospy.loginfo("[Image Compensation] Extrinsic Camera Calibration Parameter reconfigured to")
+        rospy.loginfo("clip_hist_percent : %f", config.clip_hist_percent)
+
+        self.clip_hist_percent = config.clip_hist_percent
+
+        return config
+
     def cbImageCompensation(self, msg_img):
         if self.sub_image_type == "compressed":
             # converts compressed image to opencv image
@@ -59,7 +75,7 @@ class ImageCompensation():
         cv_image_compensated = np.copy(cv_image_original)
 
         ## Image compensation based on pseudo histogram equalization
-        clip_hist_percent = 1.0
+        clip_hist_percent = self.clip_hist_percent
         
         hist_size = 256
         min_gray = 0
@@ -96,17 +112,6 @@ class ImageCompensation():
         beta = -min_gray * alpha
 
         cv_image_compensated = cv2.convertScaleAbs(cv_image_compensated, -1, alpha, beta)
-
-        if self.image_output == "on":
-            # shows original image
-            cv2.namedWindow('cv_image_original', cv2.WINDOW_AUTOSIZE)
-            cv2.moveWindow('cv_image_original', 0, 250)
-            cv2.imshow('cv_image_original', cv_image_original), cv2.waitKey(1)
-
-            # shows brightness compensated image 
-            cv2.namedWindow('cv_image_compensated', cv2.WINDOW_AUTOSIZE)
-            cv2.moveWindow('cv_image_compensated', 800, 500)
-            cv2.imshow('cv_image_compensated', cv_image_compensated), cv2.waitKey(1)
 
         if self.pub_image_type == "compressed":
             # publishes compensated image in compressed type

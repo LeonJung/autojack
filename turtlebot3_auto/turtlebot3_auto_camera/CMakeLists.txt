@@ -14,11 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_python_setup()
 
 generate_dynamic_reconfigure_options(
+  cfg/ImageProjectionParams.cfg
   cfg/ImageCompensationParams.cfg
 )
-
-# make sure configure headers are built before any node using them
-#add_dependencies(image_compensation ${PROJECT_NAME}_gencfg)
 
 catkin_package(
   CATKIN_DEPENDS dynamic_reconfigure rospy std_msgs

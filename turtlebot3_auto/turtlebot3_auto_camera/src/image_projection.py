@@ -22,13 +22,23 @@
 import rospy
 import numpy as np
 import cv2
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, CompressedImage
+
+from dynamic_reconfigure.server import Server
+from turtlebot3_auto_camera.cfg import ImageProjectionParamsConfig
 
 class ImageProjection():
     def __init__(self):
-        self.trackbar = "off"              # "on" / "off"
-        self.image_output = "off"          # "on" / "off"
+        self.top_x = rospy.get_param("/camera/extrinsic_camera_calibration/top_x", 60)
+        self.top_y = rospy.get_param("/camera/extrinsic_camera_calibration/top_y", 50)
+        self.bottom_x = rospy.get_param("/camera/extrinsic_camera_calibration/bottom_x", 140)
+        self.bottom_y = rospy.get_param("/camera/extrinsic_camera_calibration/bottom_y", 120)
+
+        self.is_calibration_mode = rospy.get_param("~is_extrinsic_camera_calibration_mode", False)
+        if self.is_calibration_mode == True:
+            srv_image_projection = Server(ImageProjectionParamsConfig, self.cbGetImageProjectionParam)
+
         self.sub_image_type = "compressed"        # "compressed" / "raw"
         self.pub_image_type = "compressed"        # "compressed" / "raw"
 
@@ -46,7 +56,27 @@ class ImageProjection():
             # publishes ground-project image in raw type 
             self.pub_image_projected = rospy.Publisher('/camera/image_output', Image, queue_size=1)
 
+        if self.is_calibration_mode == True:
+            if self.pub_image_type == "compressed":
+                # publishes calibration image in compressed type 
+                self.pub_image_calib = rospy.Publisher('/camera/image_calib/compressed', CompressedImage, queue_size=1)
+            elif self.pub_image_type == "raw":
+                # publishes calibration image in raw type 
+                self.pub_image_calib = rospy.Publisher('/camera/image_calib', Image, queue_size=1)
+
         self.cvBridge = CvBridge()
+
+
+    def cbGetImageProjectionParam(self, config, level):
+        rospy.loginfo("[Image Projection] Extrinsic Camera Calibration Parameter reconfigured to")
+        rospy.loginfo("top_x : %d, top_y : %d, bottom_x : %d, bottom_y : %d", config.top_x, config.top_y, config.bottom_x, config.bottom_y)
+
+        self.top_x = config.top_x
+        self.top_y = config.top_y
+        self.bottom_x = config.bottom_x
+        self.bottom_y = config.bottom_y
+
+        return config
 
     def cbImageProjection(self, msg_img):
         if self.sub_image_type == "compressed":
@@ -58,44 +88,35 @@ class ImageProjection():
             cv_image_original = self.cvBridge.imgmsg_to_cv2(msg_img, "bgr8")
 
         # setting homography variables
-        Top_w = 56
-        Top_h = 50
-        Bottom_w = 138
-        Bottom_h = 119
-        binary_threshold = 150
+        top_x = self.top_x
+        top_y = self.top_y
+        bottom_x = self.bottom_x
+        bottom_y = self.bottom_y
 
-        if self.trackbar == "on":
-            # trackbar
-            cv2.namedWindow('cv_image_calib')
-            cv2.createTrackbar('Top_w', 'cv_image_calib', Top_w, 120, callback)
-            cv2.createTrackbar('Top_h', 'cv_image_calib', Top_h, 120, callback)
-            cv2.createTrackbar('Bottom_w', 'cv_image_calib', Bottom_w, 320, callback)
-            cv2.createTrackbar('Bottom_h', 'cv_image_calib', Bottom_h, 320, callback)
-            cv2.createTrackbar('binary_threshold', 'cv_image_calib', binary_threshold, 255, callback)
-
-            # getting homography variables from trackbar
-            Top_w = cv2.getTrackbarPos('Top_w', 'cv_image_calib')
-            Top_h = cv2.getTrackbarPos('Top_h', 'cv_image_calib')
-            Bottom_w = cv2.getTrackbarPos('Bottom_w', 'cv_image_calib')
-            Bottom_h = cv2.getTrackbarPos('Bottom_h', 'cv_image_calib')
-            binary_threshold = cv2.getTrackbarPos('binary_threshold', 'cv_image_calib')
-
-        if self.image_output == "on":
+        if self.is_calibration_mode == True:
             # copy original image to use for cablibration
             cv_image_calib = np.copy(cv_image_original)
 
             # draw lines to help setting homography variables
-            cv_image_calib = cv2.line(cv_image_calib, (160 - Top_w, 180 - Top_h), (160 + Top_w, 180 - Top_h), (0, 0, 255), 1)
-            cv_image_calib = cv2.line(cv_image_calib, (160 - Bottom_w, 120 + Bottom_h), (160 + Bottom_w, 120 + Bottom_h), (0, 0, 255), 1)
-            cv_image_calib = cv2.line(cv_image_calib, (160 + Bottom_w, 120 + Bottom_h), (160 + Top_w, 180 - Top_h), (0, 0, 255), 1)
-            cv_image_calib = cv2.line(cv_image_calib, (160 - Bottom_w, 120 + Bottom_h), (160 - Top_w, 180 - Top_h), (0, 0, 255), 1)
+            cv_image_calib = cv2.line(cv_image_calib, (160 - top_x, 180 - top_y), (160 + top_x, 180 - top_y), (0, 0, 255), 1)
+            cv_image_calib = cv2.line(cv_image_calib, (160 - bottom_x, 120 + bottom_y), (160 + bottom_x, 120 + bottom_y), (0, 0, 255), 1)
+            cv_image_calib = cv2.line(cv_image_calib, (160 + bottom_x, 120 + bottom_y), (160 + top_x, 180 - top_y), (0, 0, 255), 1)
+            cv_image_calib = cv2.line(cv_image_calib, (160 - bottom_x, 120 + bottom_y), (160 - top_x, 180 - top_y), (0, 0, 255), 1)
+
+            if self.pub_image_type == "compressed":
+                # publishes calibration image in compressed type
+                self.pub_image_calib.publish(self.cvBridge.cv2_to_compressed_imgmsg(cv_image_calib, "jpg"))
+
+            elif self.pub_image_type == "raw":
+                # publishes calibration image in raw type
+                self.pub_image_calib.publish(self.cvBridge.cv2_to_imgmsg(cv_image_calib, "bgr8"))
 
         # adding Gaussian blur to the image of original
         cv_image_original = cv2.GaussianBlur(cv_image_original, (5, 5), 0)
 
         ## homography transform process
         # selecting 4 points from the original image
-        pts_src = np.array([[160 - Top_w, 180 - Top_h], [160 + Top_w, 180 - Top_h], [160 + Bottom_w, 120 + Bottom_h], [160 - Bottom_w, 120 + Bottom_h]])
+        pts_src = np.array([[160 - top_x, 180 - top_y], [160 + top_x, 180 - top_y], [160 + bottom_x, 120 + bottom_y], [160 - bottom_x, 120 + bottom_y]])
 
         # selecting 4 points from image that will be transformed
         pts_dst = np.array([[200, 0], [800, 0], [800, 600], [200, 600]])
@@ -112,17 +133,6 @@ class ImageProjection():
         black = (0, 0, 0)
         white = (255, 255, 255)
         cv_image_homography = cv2.fillPoly(cv_image_homography, [triangle1, triangle2], black)
-
-        if self.image_output == "on":
-            # shows original image
-            cv2.namedWindow('cv_image_original', cv2.WINDOW_AUTOSIZE)
-            cv2.moveWindow('cv_image_original', 0, 250)
-            cv2.imshow('cv_image_original', cv_image_original), cv2.waitKey(1)
-            
-            # shows homography view
-            cv2.namedWindow('cv_image_homography', cv2.WINDOW_AUTOSIZE)
-            cv2.moveWindow('cv_image_homography', 500, 250)
-            cv2.imshow('cv_image_homography', cv_image_homography), cv2.waitKey(1)
 
         if self.pub_image_type == "compressed":
             # publishes ground-project image in compressed type

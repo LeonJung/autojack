@@ -17,19 +17,16 @@
 # limitations under the License.
 ################################################################################
 
-# Author: Ryu Woon Jung (Leon), Roger Sacchelli
+# Author: Ryu Woon Jung (Leon), Special Thanks : Roger Sacchelli
 
 import rospy
-import cv2
 import numpy as np
-# from sklearn.cluster import KMeans
-from cv_bridge import CvBridge, CvBridgeError
+import cv2
+from cv_bridge import CvBridge
 from std_msgs.msg import UInt8, Float64
 from sensor_msgs.msg import Image, CompressedImage
+
 import tf
-
-# import matplotlib.pyplot as plt
-
 import math
 
 def callback(x):
@@ -40,8 +37,8 @@ class DetectLane():
         # self.showing_plot_track = "off"
         self.showing_images = "off" # you can choose showing images or not by "on", "off"
         self.showing_trackbar = "off"
-
         self.showing_final_image = "off"
+
         self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
         self.pub_image_type = "compressed" # you can choose image type "compressed", "raw"
 
@@ -67,25 +64,12 @@ class DetectLane():
         # subscribes state : white line reliability
         self.pub_white_line_reliability = rospy.Publisher('/detect/white_line_reliability', UInt8, queue_size=1)
  
-
-
         self.cvBridge = CvBridge()
 
         self.counter = 1
 
-        self.step = 4
-        self.pos_err = 10.
-
         self.window_width = 1000.
         self.window_height = 600.
-
-        self.screen_start_from_wheel_real_dist = 123.
-
-        self.d_ppx = 29. / 57.
-        self.d_ppy = 29. / 90.
-
-        self.x_t = [0, 0, 0, 0]
-        self.y_t = np.subtract(np.arange(0, self.window_height, (self.window_height / self.step)), 1)
 
         self.Hue_l_white = 52
         self.Hue_h_white = 103
