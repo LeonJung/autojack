@@ -14,6 +14,9 @@ from sensor_msgs.msg import Image, CompressedImage
 import math
 import tf
 
+from dynamic_reconfigure.server import Server
+from turtlebot3_auto_detect.cfg import DetectLevelParamsConfig
+
 def callback(x):
     pass
 
@@ -73,11 +76,19 @@ def fnCheckDistanceIsEqual(point1, point2, point3):
 
 class DetectLevel():
     def __init__(self):
-        self.showing_final_image = "off"
-        self.showing_trackbar = "off"
+        self.hue_red_l = rospy.get_param("~detect/level/red/hue_l", 90)
+        self.hue_red_h = rospy.get_param("~detect/level/red/hue_h", 180)
+        self.saturation_red_l = rospy.get_param("~detect/level/red/saturation_l", 128)
+        self.saturation_red_h = rospy.get_param("~detect/level/red/saturation_h", 255)
+        self.lightness_red_l = rospy.get_param("~detect/level/red/lightness_l", 128)
+        self.lightness_red_h = rospy.get_param("~detect/level/red/lightness_h", 255)
+
+        self.is_calibration_mode = rospy.get_param("~is_detection_calibration_mode", False)
+        if self.is_calibration_mode == True:
+            srv_detect_lane = Server(DetectLevelParamsConfig, self.cbGetDetectLevelParam)
+
         self.sub_image_type = "raw" # you can choose image type "compressed", "raw"
         self.pub_image_type = "raw" # you can choose image type "compressed", "raw"
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
 
         if self.sub_image_type == "compressed":
             # subscribes compressed image
@@ -85,14 +96,21 @@ class DetectLevel():
         elif self.sub_image_type == "raw":
             # subscribes raw image
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.cbGetImage, queue_size = 1)
- 
+
         if self.pub_image_type == "compressed":
             # publishes level image in compressed type 
             self.pub_image_level = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
         elif self.pub_image_type == "raw":
             # publishes level image in raw type
             self.pub_image_level = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
-
+ 
+        if self.is_calibration_mode == True:
+            if self.pub_image_type == "compressed":
+                # publishes color filtered image in compressed type 
+                self.pub_image_color_filtered = rospy.Publisher('/detect/image_output_sub1/compressed', CompressedImage, queue_size = 1)
+            elif self.pub_image_type == "raw":
+                # publishes color filtered image in raw type
+                self.pub_image_color_filtered = rospy.Publisher('/detect/image_output_sub1', Image, queue_size = 1)
 
         self.sub_level_crossing_order = rospy.Subscriber('/detect/level_crossing_order', UInt8, self.cbLevelCrossingOrder, queue_size=1)
 
@@ -105,13 +123,6 @@ class DetectLevel():
         self.pub_max_vel = rospy.Publisher('/control/max_vel', Float64, queue_size = 1)
 
         self.StepOfLevelCrossing = Enum('StepOfLevelCrossing', 'searching_stop_sign searching_level watching_level stop pass_level')
-
-        self.Hue_l_red = 132
-        self.Hue_h_red = 180
-        self.Saturation_l_red = 95
-        self.Saturation_h_red = 217
-        self.Lightness_l_red = 58
-        self.Lightness_h_red = 255
 
         self.cvBridge = CvBridge()
         self.cv_image = None
@@ -130,8 +141,28 @@ class DetectLevel():
 
             loop_rate.sleep()
 
+    def cbGetDetectLevelParam(self, config, level):
+        rospy.loginfo("[Detect Level] Detect Level Calibration Parameter reconfigured to")
+        rospy.loginfo("hue_red_l : %d", config.hue_red_l)
+        rospy.loginfo("hue_red_h : %d", config.hue_red_h)
+        rospy.loginfo("saturation_red_l : %d", config.saturation_red_l)
+        rospy.loginfo("saturation_red_h : %d", config.saturation_red_h)
+        rospy.loginfo("lightness_red_l : %d", config.lightness_red_l)
+        rospy.loginfo("lightness_red_h : %d", config.lightness_red_h)
+
+        self.hue_red_l = config.hue_red_l
+        self.hue_red_h = config.hue_red_h
+        self.saturation_red_l = config.saturation_red_l
+        self.saturation_red_h = config.saturation_red_h
+        self.lightness_red_l = config.lightness_red_l
+        self.lightness_red_h = config.lightness_red_h
+
+        return config
+
     def cbGetImage(self, image_msg):
-        # drop the frame to 1/5 (6fps) because of the processing speed. This is up to your computer's operating power.
+        # Change the frame rate by yourself. Now, it is set to 1/3 (10fps). 
+        # Unappropriate value of frame rate may cause huge delay on entire recognition process.
+        # This is up to your computer's operating power.
         if self.counter % 3 != 0:
             self.counter += 1
             return
@@ -151,8 +182,7 @@ class DetectLevel():
             rospy.loginfo("Now lane_following")
 
             pub_level_crossing_return.data = self.StepOfLevelCrossing.searching_stop_sign.value
-                            
-                                
+                                                            
         elif order.data == self.StepOfLevelCrossing.searching_level.value:
             rospy.loginfo("Now searching_level")
 
@@ -214,19 +244,11 @@ class DetectLevel():
         elif order.data == self.StepOfLevelCrossing.pass_level.value:
             rospy.loginfo("Now pass_level")
 
-            # while True:
-            #     if self.is_obstacle_detected == False:
-            #         rospy.loginfo("parking lot is clear")
-            #         break
-            #     else:
-            #         rospy.loginfo("right side is full")
-
             pub_level_crossing_return.data = self.StepOfLevelCrossing.pass_level.value
 
         self.pub_level_crossing_return.publish(pub_level_crossing_return)
 
     def fnFindLevel(self):
-
         cv_image_mask = self.fnMaskRedOfLevel()
 
         cv_image_mask = cv2.GaussianBlur(cv_image_mask,(5,5),0)
@@ -239,77 +261,55 @@ class DetectLevel():
         # Convert BGR to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        Hue_l = self.Hue_l_red
-        Hue_h = self.Hue_h_red
-        Saturation_l = self.Saturation_l_red
-        Saturation_h = self.Saturation_h_red
-        Lightness_l = self.Lightness_l_red
-        Lightness_h = self.Lightness_h_red
-
-        if self.showing_trackbar == "on":
-            cv2.namedWindow('mask_red')
-            cv2.createTrackbar('Hue_l', 'mask_red', Hue_l, 179, callback)
-            cv2.createTrackbar('Hue_h', 'mask_red', Hue_h, 180, callback)
-            cv2.createTrackbar('Saturation_l', 'mask_red', Saturation_l, 254, callback)
-            cv2.createTrackbar('Saturation_h', 'mask_red', Saturation_h, 255, callback)
-            cv2.createTrackbar('Lightness_l', 'mask_red', Lightness_l, 254, callback)
-            cv2.createTrackbar('Lightness_h', 'mask_red', Lightness_h, 255, callback)
-
-            # getting homography variables from trackbar
-            Hue_l = cv2.getTrackbarPos('Hue_l', 'mask_red')
-            Hue_h = cv2.getTrackbarPos('Hue_h', 'mask_red')
-            Saturation_l = cv2.getTrackbarPos('Saturation_l', 'mask_red')
-            Saturation_h = cv2.getTrackbarPos('Saturation_h', 'mask_red')
-            Lightness_l = cv2.getTrackbarPos('Lightness_l', 'mask_red')
-            Lightness_h = cv2.getTrackbarPos('Lightness_h', 'mask_red')
+        Hue_l = self.hue_red_l
+        Hue_h = self.hue_red_h
+        Saturation_l = self.saturation_red_l
+        Saturation_h = self.saturation_red_h
+        Lightness_l = self.lightness_red_l
+        Lightness_h = self.lightness_red_h
 
         # define range of red color in HSV
         lower_red = np.array([Hue_l, Saturation_l, Lightness_l])
         upper_red = np.array([Hue_h, Saturation_h, Lightness_h])
-
 
         # Threshold the HSV image to get only red colors
         mask = cv2.inRange(hsv, lower_red, upper_red)
 
-        # Bitwise-AND mask and original image
-        # res = cv2.bitwise_and(image, image, mask = mask)
+        # ## TODO:: expand range for red
+        # hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        ## TODO:: expand range for red
-        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        # # Convert BGR to HSV
+        # Hue_l = 0
+        # Hue_h = 23
+        # Saturation_l = 95
+        # Saturation_h = 217
+        # Lightness_l = 58
+        # Lightness_h = 255
 
-        # Convert BGR to HSV
-        Hue_l = 0
-        Hue_h = 23
-        Saturation_l = 95
-        Saturation_h = 217
-        Lightness_l = 58
-        Lightness_h = 255
+        # # define range of red color in HSV
+        # lower_red = np.array([Hue_l, Saturation_l, Lightness_l])
+        # upper_red = np.array([Hue_h, Saturation_h, Lightness_h])
 
-        # define range of red color in HSV
-        lower_red = np.array([Hue_l, Saturation_l, Lightness_l])
-        upper_red = np.array([Hue_h, Saturation_h, Lightness_h])
+        # # Threshold the HSV image to get only red colors
+        # mask2 = cv2.inRange(hsv, lower_red, upper_red)
 
-        # Threshold the HSV image to get only red colors
-        mask2 = cv2.inRange(hsv, lower_red, upper_red)
+        # # Bitwise-AND mask and original image
+        # # res2 = cv2.bitwise_and(image, image, mask = mask2)
 
-        # Bitwise-AND mask and original image
-        # res2 = cv2.bitwise_and(image, image, mask = mask2)
+        # mask = cv2.bitwise_or(mask, mask2, mask = None)
 
-        mask3 = cv2.bitwise_or(mask, mask2, mask = None)
+        if self.is_calibration_mode == True:
+            if self.pub_image_type == "compressed":
+                # publishes yellow lane filtered image in compressed type
+                self.pub_image_color_filtered.publish(self.cvBridge.cv2_to_compressed_imgmsg(mask, "jpg"))
 
+            elif self.pub_image_type == "raw":
+                # publishes yellow lane filtered image in raw type
+                self.pub_image_color_filtered.publish(self.cvBridge.cv2_to_imgmsg(mask, "mono8"))
 
+        mask = cv2.bitwise_not(mask)
 
-        # cv2.imshow('frame_red',image), cv2.waitKey(1)
-        if self.showing_images == "on":
-            # cv2.imshow('mask_red',mask), cv2.waitKey(1)
-            # cv2.imshow('mask_red2',mask2), cv2.waitKey(1)
-            cv2.imshow('mask_red3',mask3), cv2.waitKey(1)
-            # cv2.resizeWindow('mask_red', 640, 480)
-            # cv2.imshow('res_red',res), cv2.waitKey(1)
-
-        mask3 = cv2.bitwise_not(mask3)
-
-        return mask3
+        return mask
 
 
     def fnFindRectOfLevel(self, mask):
@@ -365,15 +365,9 @@ class DetectLevel():
 
             if is_rects_linear == True or is_rects_dist_equal == True:
                 # finding the angle of line
-                # angle = math.atan2(keypts[idx1].pt[1] - keypts[idx2].pt[1], keypts[idx1].pt[0] - keypts[idx2].pt[0]) * 180 / 3.141592
                 distance_bar2car = 100 / fnCalcDistanceDot2Dot(point1[0], point1[1], point2[0], point2[1])
-                # if angle < 0:
-                #     angle = angle + 180
-                # if angle > 90:
-                #     angle = 180 - angle
 
-                # # publishing topic
-                # if angle < 45:
+                # publishing topic
                 self.stop_bar_count = 40
                 if distance_bar2car > 1.5:
                     is_level_detected = True
@@ -383,40 +377,11 @@ class DetectLevel():
                     is_level_close = True
                     self.stop_bar_state = 'stop'
 
-                # print distance_bar2car
-                # else:
-                #     rospy.loginfo("GO~~")
-                #     self.stop_bar_count = 0
-                #     self.stop_bar_state = 'go'
-
-                # cv2.putText(frame, self.stop_bar_state,(0, 0), cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2)
-        #         message = Stop_bar()
-        #         message.state = self.stop_bar_state
-        #         message.distance = 100 / find_distance_dot2dot(point1[0], point1[1], point2[0], point2[1])
-        #         message.position1_x = point1[0]
-        #         message.position1_y = point1[1]
-        #         message.position2_x = point3[0]
-        #         message.position2_y = point3[1]
-        #         self._pub.publish(message)
-
         if self.stop_bar_count > 0:
             self.stop_bar_count -= 1
         if self.stop_bar_count == 0:
             is_level_opened = True
             self.stop_bar_state = 'go'
-
-        # rospy.loginfo("self.stop_bar_count = %d", self.stop_bar_count)
-        #     message = Stop_bar()
-        #     message.state = self.stop_bar_state
-        #     message.distance = 0
-        #     message.position1_x = 0
-        #     message.position1_y = 0
-        #     message.position2_x = 0
-        #     message.position2_y = 0
-        #     self._pub.publish(message)
-
-        if self.showing_final_image == "on":
-            cv2.imshow('frame', frame), cv2.waitKey(1)
 
         if self.pub_image_type == "compressed":
             # publishes level image in compressed type
@@ -425,7 +390,6 @@ class DetectLevel():
         elif self.pub_image_type == "raw":
             # publishes level image in raw type
             self.pub_image_level.publish(self.cvBridge.cv2_to_imgmsg(frame, "bgr8"))
-
 
         return is_level_detected, is_level_close, is_level_opened
 

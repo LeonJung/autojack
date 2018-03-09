@@ -69,12 +69,12 @@ class DetectLane():
         if self.is_calibration_mode == True:
             if self.pub_image_type == "compressed":
                 # publishes lane image in compressed type 
-                self.pub_image_white_lane = rospy.Publisher('/detect/image_white_lane_output/compressed', CompressedImage, queue_size = 1)
-                self.pub_image_yellow_lane = rospy.Publisher('/detect/image_yellow_lane_output/compressed', CompressedImage, queue_size = 1)
+                self.pub_image_white_lane = rospy.Publisher('/detect/image_output_sub1/compressed', CompressedImage, queue_size = 1)
+                self.pub_image_yellow_lane = rospy.Publisher('/detect/image_output_sub2/compressed', CompressedImage, queue_size = 1)
             elif self.pub_image_type == "raw":
                 # publishes lane image in raw type
-                self.pub_image_white_lane = rospy.Publisher('/detect/image_white_lane_output', Image, queue_size = 1)
-                self.pub_image_yellow_lane = rospy.Publisher('/detect/image_yellow_lane_output', Image, queue_size = 1)
+                self.pub_image_white_lane = rospy.Publisher('/detect/image_output_sub1', Image, queue_size = 1)
+                self.pub_image_yellow_lane = rospy.Publisher('/detect/image_output_sub2', Image, queue_size = 1)
 
         self.pub_lane = rospy.Publisher('/detect/lane', Float64, queue_size = 1)
 
