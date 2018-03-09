@@ -1,13 +1,14 @@
 <launch>
   <!-- launch turtlebot3_auto_intrinsic_camera_calibration.launch in the raspberry pi before launch this file -->
 
-  <arg name="calibration_mode" default="$(env TURTLEBOT3_AUTO_EX_CALIB)" doc="calibration_mode type [calibration, action]"/>
+  <arg name="calibration_mode" default="$(env AUTO_EX_CALIB)" doc="calibration_mode type [calibration, action]"/>
 
   <group ns="camera">
     <!-- image brightness & contrast compensation of ground-projected image -->
     <node pkg="turtlebot3_auto_camera" type="image_compensation.py" name="image_compensation" output="screen">
       <rosparam command="load" file="$(find turtlebot3_auto_camera)/calibration/extrinsic_calibration/compensation.yaml" />
       <param if="$(eval calibration_mode == 'calibration')" name="/is_extrinsic_camera_calibration_mode" value="True"/>
+      <param if="$(eval calibration_mode == 'action')" name="/is_extrinsic_camera_calibration_mode" value="False"/>    
       <remap from="/camera/image_input" to="/camera/image_rect_color" />
       <remap from="/camera/image_input/compressed" to="/camera/image_rect_color/compressed" />
       <remap from="/camera/image_output" to="/camera/image_compensated" />
@@ -18,6 +19,7 @@
     <node pkg="turtlebot3_auto_camera" type="image_projection.py" name="image_projection" output="screen">
       <rosparam command="load" file="$(find turtlebot3_auto_camera)/calibration/extrinsic_calibration/projection.yaml" />
       <param if="$(eval calibration_mode == 'calibration')" name="/is_extrinsic_camera_calibration_mode" value="True"/>
+      <param if="$(eval calibration_mode == 'action')" name="/is_extrinsic_camera_calibration_mode" value="False"/>    
       <remap from="/camera/image_input" to="/camera/image_rect_color" />
       <remap from="/camera/image_input/compressed" to="/camera/image_rect_color/compressed" />
       <remap from="/camera/image_output" to="/camera/image_projected" />
@@ -30,6 +32,7 @@
     <node pkg="turtlebot3_auto_camera" type="image_compensation.py" name="image_compensation_projection" output="screen">
       <rosparam command="load" file="$(find turtlebot3_auto_camera)/calibration/extrinsic_calibration/compensation.yaml" />
       <param if="$(eval calibration_mode == 'calibration')" name="/is_extrinsic_camera_calibration_mode" value="True"/>
+      <param if="$(eval calibration_mode == 'action')" name="/is_extrinsic_camera_calibration_mode" value="False"/>    
       <remap from="/camera/image_input" to="/camera/image_projected" />
       <remap from="/camera/image_input/compressed" to="/camera/image_projected/compressed" />
       <remap from="/camera/image_output" to="/camera/image_projected_compensated" />

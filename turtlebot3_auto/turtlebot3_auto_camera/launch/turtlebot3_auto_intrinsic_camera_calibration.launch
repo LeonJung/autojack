@@ -2,7 +2,7 @@
   <!-- launch turtlebot3_auto_camera_pi.launch in the raspberry pi before launch this file -->
   <!-- launch this in remote pc when you are doing calibration-->
 
-  <arg name="calibration_mode" default="$(env TURTLEBOT3_AUTO_IN_CALIB)" doc="calibration_mode type [calibration, action]"/>
+  <arg name="calibration_mode" default="$(env AUTO_IN_CALIB)" doc="calibration_mode type [calibration, action]"/>
 
   <!-- image transport from compressed to raw -->
   <node pkg="image_transport" type="republish" name="republish" args="compressed in:=camera/image raw out:=camera/image" />
