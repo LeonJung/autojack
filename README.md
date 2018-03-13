@@ -174,7 +174,7 @@ From now, the following descriptions will mainly adjust `feature detector / colo
 
 ##### 1.3.4.1 Lane Detection
 
-- 1. Put the robot on the lane. If you placed the robot correctly, `yellow line` should be placed on the left side of the robot, and of course, `white line` should be placed on the right side of the robot. 
+- 1. Put the robot on the lane. If you placed the robot correctly, `yellow line` should be placed on the left side of the robot, and of course, `white line` should be placed on the right side of the robot. Make sure that `turtlebot3_robot` node of `turtlebot3_bringup` package is not yet launched. If it is on running, the robot will suddenly runs on the track. 
 
 
 - 2. [Remote PC] Open new terminal, then enter
@@ -184,7 +184,7 @@ $ export AUTO_DT_CALIB=calibration
 $ roslaunch turtlebot3_auto_detect turtlebot3_auto_detect_lane.launch
 ```
 
-- 2. [Remote PC] Open new terminal, then enter
+- 3. [Remote PC] Open new terminal, then enter
 
 ```
 $ rqt
@@ -192,7 +192,7 @@ $ rqt
 
 clicking <kbd>plugins</kbd> -> <kbd>visualization</kbd> -> <kbd>Image view</kbd> on the top of the screen will make extra monnitor for camera view. Make 3 extra monitor in the rqt plate by following it. Then, choose `/detect/image_yellow_lane_marker/compressed`, `/detect/image_lane/compressed` and `/detect/image_white_lane_marker/compressed` topics on each of extra monitors. If everything works fine, left and right screen will show the filtered image of the yellow line and the white line, and the center screen will show the lane of where the robot should go. In the calibration mode, left and right screen will show white, and the center screen may show abnormal result. From here, you should adjust the filter parameters to show up correct lines and the direction.
 
-- 2. [Remote PC] Open new terminal, then enter
+- 4. [Remote PC] Open new terminal, then enter
 
 ``` bash
 $ rosrun rqt_reconfigure rqt_reconfigure
@@ -202,7 +202,58 @@ then, adjust the parameter value in `/camera/image_projection` and `/camera/imag
 
 Tip: calibration process of line color filtering is sometimes so-so difficult because of your physical environment which includes the luminance of light in the room, etc. Hence, you should have patience to carry out this procedure. To make everything quickly, put the value of `turtlebot3_auto_detect/param/lane/lane.yaml` on the reconfiguration parameter, then start calibration. Calibrate hue low - high value at first. (1) Hue value means the color, and every colors, like `yellow`, `white`, have their own region of hue value (refer to hsv map). Then calibrate saturation low - high value. (2) Every colors have also their own field of saturation. Finally, calibrate the lightness low - high value. (3) In the source code, however, have auto-adjustment function, so calibrating lightness low value is meaningless. Just put the lightness high value to 255. Clearly filtered line image will give you clear result of the lane. 
 
+- 5. [Remote PC] After overwriting the calibration file, close `rqt_rconfigure` and `turtlebot3_auto_detect_lane`, then enter
+
+``` bash
+$ export AUTO_DT_CALIB=action
+$ roslaunch turtlebot3_auto_detect turtlebot3_auto_detect_lane.launch
+```
+
+- 6. Check if the results come out well by entering 
+
+[Remote PC] 
+``` bash
+$ roslaunch turtlebot3_auto_control turtlebot3_auto_control_lane.launch
+```
+
+[TurtleBot3 SBC] 
+``` bash
+$ roslaunch turtlebot3_bringup turtlebot3_robot.launch
+```
+
+After entering these commands, the robot will kick-off to run. 
+
 ##### 1.3.4.2 Traffic Sign
+
+- 1. Traffic sign detection needs some pictures of the traffic sign. Take their pictures by using `rqt_image_view` node and edit their size, shape by any of `photo editor` available in linux. The node finds the traffic sign with `SIFT algorithm`, so if you want to use your customized traffic signs ( which is not introduced in the `autorace_track`), just be aware of `More edges in the traffic sign gives better recognition results from SIFT`. 
+
+- 2. Put the robot on the lane. At this time, the traffic sign should be placed to where the robot can see it easily. Make sure that `turtlebot3_robot` node of `turtlebot3_bringup` package is not yet launched. If it is on run, the robot may suddenly run on the track.
+
+- 3. [Remote PC] Open new terminal, then enter
+
+```
+$ rqt_image_view
+```
+
+then, click `/camera/image_compensated` topic in the select box. If everything works fine, the screen should show you the view from the robot.
+
+- 4. [Remote PC] Take the picture by <kbd>alt</kbd> + <kbd>print screen</kbd>, edit the captured with your preferred photo editor. After that, place the picture to `[where the autorace_machine you've placed]/turtlebot3_auto/turtlebot3_auto_detect/file/detect_sign/` and rename it as you want. (Although, you should change the file name written in the source `detect_sign.py`, if you want to change the default file names.)
+
+
+- 5. [Remote PC] Open new terminal, then enter
+
+``` bash
+$ roslaunch turtlebot3_auto_detect turtlebot3_auto_detect_sign.launch
+```
+
+
+- 6. [Remote PC] Open new terminal, then enter
+
+```
+$ rqt_image_view
+```
+
+then, click `/detect/image_traffic_sign/compressed` topic in the select box. If everything works fine, the screen will show the result of traffic sign detection, if it succeeds to recognize it.
 
 ##### 1.3.4.3 Traffic Light
 

@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
   <name>turtlebot3_auto_core</name>
-  <version>0.0.1</version>
-  <description> the package that decides status of turtlebot3 auto</description>
+  <version>1.0.0</version>
+  <description> The package for node control in TurtleBot3 Auto</description>
 
   <maintainer email="rwjung@robotis.com">Leon Jung</maintainer>
 

@@ -1,4 +1,0 @@
-<launch>
-  <node pkg="camera_calibration" type="cameracalibrator.py" name="intrinsic_calibrator" args="--size 7x5 --square 0.029 image:=/camera/image camera:=/camera">
-  </node>
-</launch>

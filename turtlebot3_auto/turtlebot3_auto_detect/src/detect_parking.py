@@ -1,5 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+################################################################################
+# Copyright 2018 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
+# Author: Ryu Woon Jung (Leon)
  
 import numpy as np
 import rospy
@@ -13,17 +31,14 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CompressedImage
 import math
 import tf
+import os 
 
 class DetectParking():
     def __init__(self):
         self.sub_image_type = "raw"         # "compressed" / "raw"
         self.pub_image_type = "raw"         # "compressed" / "raw"
 
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
-
         # subscribes state : white line reliability
-        self.sub_white_line_reliability = rospy.Subscriber('/detect/white_line_reliability', UInt8, self.cbWhiteLineReliable, queue_size=1)
- 
         self.sub_parking_lot_order = rospy.Subscriber('/detect/parking_lot_order', UInt8, self.cbParkingLotOrder, queue_size=1)
 
         self.sub_scan_obstacle = rospy.Subscriber('/detect/scan', LaserScan, self.cbScanObstacle, queue_size=1)
@@ -38,10 +53,10 @@ class DetectParking():
             self.sub_image_original = rospy.Subscriber('/detect/image_input', Image, self.cbGetImage, queue_size = 1)
 
         if self.pub_image_type == "compressed":
-            # publishes compensated image in compressed type 
+            # publishes parking image in compressed type 
             self.pub_image_parking = rospy.Publisher('/detect/image_output/compressed', CompressedImage, queue_size = 1)
         elif self.pub_image_type == "raw":
-            # publishes compensated image in raw type
+            # publishes parking image in raw type
             self.pub_image_parking = rospy.Publisher('/detect/image_output', Image, queue_size = 1)
 
         self.pub_parking_lot_return = rospy.Publisher('/detect/parking_lot_stamped', UInt8, queue_size=1)
@@ -53,7 +68,6 @@ class DetectParking():
         self.StepOfParkingLot = Enum('StepOfParkingLot', 'searching_parking_sign searching_parking_point_line searching_nonreserved_parking_area parking')
 
         self.is_obstacle_detected = True
-        self.white_line_reliability = 100
 
         self.cvBridge = CvBridge()
         self.cv_image = None
@@ -65,10 +79,12 @@ class DetectParking():
         self.blink_trigger = 1
         self.blink_count = 0
 
-        self.img1 = cv2.imread('/home/leon/Desktop/parking_not_allowed.png', -1)
-        self.img2 = cv2.imread('/home/leon/Desktop/parking_allowed.png', -1)
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        dir_path = dir_path.replace('turtlebot3_auto_detect/src', 'turtlebot3_auto_detect/')
+        dir_path += 'file/detect_parking/'
 
-
+        self.img1 = cv2.imread(dir_path + 'parking_not_allowed.png', -1)
+        self.img2 = cv2.imread(dir_path + 'parking_allowed.png', -1)
 
     def cbGetImage(self, image_msg):
         if self.sub_image_type == "compressed":
@@ -77,49 +93,14 @@ class DetectParking():
         else:
             self.cv_image = self.cvBridge.imgmsg_to_cv2(image_msg, "bgr8")
 
-        if self.is_now_parking == True:
-            self.blink_count += 1
-            if self.blink_count % 8 == 0:
-                self.blink_trigger = 1 - self.blink_trigger
-                self.blink_count = 0
-
-            if self.is_parking_allowed == False:
-                if self.blink_trigger == 1:
-                    x_offset = 874
-                    y_offset = 0
-
-                    y1, y2 = y_offset, y_offset + self.img1.shape[0]
-                    x1, x2 = x_offset, x_offset + self.img1.shape[1]
-
-                    alpha_s = self.img1[:, :, 3] / 255.0
-                    alpha_l = 1.0 - alpha_s
-
-                    for c in range(0, 3):
-                        self.cv_image[y1:y2, x1:x2, c] = (alpha_s * self.img1[:, :, c] +
-                                                alpha_l * self.cv_image[y1:y2, x1:x2, c])
-
-            else:
-                if self.blink_trigger == 1:
-                    x_offset = 874
-                    y_offset = 0
-
-                    y1, y2 = y_offset, y_offset + self.img2.shape[0]
-                    x1, x2 = x_offset, x_offset + self.img2.shape[1]
-
-                    alpha_s = self.img2[:, :, 3] / 255.0
-                    alpha_l = 1.0 - alpha_s
-
-                    for c in range(0, 3):
-                        self.cv_image[y1:y2, x1:x2, c] = (alpha_s * self.img2[:, :, c] +
-                                                alpha_l * self.cv_image[y1:y2, x1:x2, c])
-
+        self.fnBlinkParkSign()
 
         if self.pub_image_type == "compressed":
-            # publishes compensated image in compressed type
+            # publishes parking image in compressed type
             self.pub_image_parking.publish(self.cvBridge.cv2_to_compressed_imgmsg(self.cv_image, "jpg"))
 
         elif self.pub_image_type == "raw":
-            # publishes compensated image in raw type
+            # publishes parking image in raw type
             self.pub_image_parking.publish(self.cvBridge.cv2_to_imgmsg(self.cv_image, "bgr8"))
 
     def cbParkingLotOrder(self, order):
@@ -129,8 +110,7 @@ class DetectParking():
             rospy.loginfo("Now lane_following")
 
             msg_pub_parking_lot_return.data = self.StepOfParkingLot.searching_parking_sign.value
-                            
-                                
+                                      
         elif order.data == self.StepOfParkingLot.searching_parking_point_line.value:
             rospy.loginfo("Now searching_parking_point_line")
 
@@ -145,7 +125,6 @@ class DetectParking():
                     pass
 
             msg_pub_parking_lot_return.data = self.StepOfParkingLot.searching_parking_point_line.value
-
 
         elif order.data == self.StepOfParkingLot.searching_nonreserved_parking_area.value:
             rospy.loginfo("Now searching_nonreserved_parking_area")
@@ -194,18 +173,8 @@ class DetectParking():
     def cbParkingFinished(self, parking_finished_msg):
         self.is_parking_finished = True
 
-    def cbWhiteLineReliable(self, white_line_reliability):
-        self.white_line_reliability = white_line_reliability.data
-
     def cbScanObstacle(self, scan):
-        # angle_scan = 15
-        # scan_start = 270 - angle_scan
-        # scan_end = 270 + angle_scan
-        # threshold_distance = 0.3
-        # is_obstacle_detected = 'no'
-        # obstacle_count = 0
-
-        angle_scan = 60#45
+        angle_scan = 60
         scan_start = 270 - angle_scan
         scan_end = 270 + angle_scan
         threshold_distance = 0.5
@@ -241,24 +210,56 @@ class DetectParking():
         keypts = det.detect(self.cv_bitn_img)
         frame = cv2.drawKeypoints(self.cv_bitn_img, keypts, np.array([]), (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-        # showing binary and original images
-        if self.showing_images == 'on':
-            # cv2.imshow('cv_image', self.cv_image), cv2.waitKey(1)
-            cv2.imshow('frame', frame), cv2.waitKey(1)
-
         count = 0
         for i in range(len(keypts)):
             x = int(keypts[i].pt[0])
             y = int(keypts[i].pt[1])
 
             if x > 500:
-            # if y > 100 and y < 500 :
                 count += 1
 
         if count >= 1:
             return True
         else:
             return False
+
+    def fnBlinkParkSign(self):
+        if self.is_now_parking == True:
+            self.blink_count += 1
+            if self.blink_count % 8 == 0:
+                self.blink_trigger = 1 - self.blink_trigger
+                self.blink_count = 0
+
+            if self.is_parking_allowed == False:
+                if self.blink_trigger == 1:
+                    x_offset = 874
+                    y_offset = 0
+
+                    y1, y2 = y_offset, y_offset + self.img1.shape[0]
+                    x1, x2 = x_offset, x_offset + self.img1.shape[1]
+
+                    alpha_s = self.img1[:, :, 3] / 255.0
+                    alpha_l = 1.0 - alpha_s
+
+                    for c in range(0, 3):
+                        self.cv_image[y1:y2, x1:x2, c] = (alpha_s * self.img1[:, :, c] +
+                                                alpha_l * self.cv_image[y1:y2, x1:x2, c])
+
+            else:
+                if self.blink_trigger == 1:
+                    x_offset = 874
+                    y_offset = 0
+
+                    y1, y2 = y_offset, y_offset + self.img2.shape[0]
+                    x1, x2 = x_offset, x_offset + self.img2.shape[1]
+
+                    alpha_s = self.img2[:, :, 3] / 255.0
+                    alpha_l = 1.0 - alpha_s
+
+                    for c in range(0, 3):
+                        self.cv_image[y1:y2, x1:x2, c] = (alpha_s * self.img2[:, :, c] +
+                                                alpha_l * self.cv_image[y1:y2, x1:x2, c])
+
 
     def main(self):
         rospy.spin()

@@ -1,5 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+################################################################################
+# Copyright 2018 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
+# Author: Ryu Woon Jung (Leon), [AuTURBO] Kihoon Kim (https://github.com/auturbo)
  
 import numpy as np
 import rospy
@@ -14,52 +32,21 @@ import tf
 
 class DetectTunnel():
     def __init__(self):
-        # subscribes state : white line reliability
-        # self.sub_white_line_reliability = rospy.Subscriber('/detect/white_line_reliability', UInt8, self.cbWhiteLineReliable, queue_size=1)
- 
         self.sub_tunnel_order = rospy.Subscriber('/detect/tunnel_order', UInt8, self.cbTunnelOrder, queue_size=1)
-
         self.sub_arrival_status = rospy.Subscriber("/move_base/result", MoveBaseActionResult, self.cbGetNavigationResult, queue_size=1)
-
         self.sub_odom = rospy.Subscriber('/odom', Odometry, self.cbOdom, queue_size=1)
 
-        # self.sub_obstacle = rospy.Subscriber('/detect/obstacle', UInt8, self.cbObstacleDetected, queue_size=1)
-
-        # self.sub_level_crossing_finished = rospy.Subscriber('/control/level_crossing_finished', UInt8, self.cbLevelCrossingFinished, queue_size = 1)
-
         self.pub_tunnel_return = rospy.Publisher('/detect/tunnel_stamped', UInt8, queue_size=1)
-
-        # self.pub_parking_start = rospy.Publisher('/control/parking_start', UInt8, queue_size = 1)
-
-        self.pub_cmd_vel = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
-
         self.pub_goal_pose_stamped = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size=1)
-
+        self.pub_cmd_vel = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
         self.pub_max_vel = rospy.Publisher('/control/max_vel', Float64, queue_size = 1)
 
         self.StepOfTunnel = Enum('StepOfTunnel', 'searching_tunnel_sign go_in_to_tunnel navigation go_out_from_tunnel exit')
 
-        # self.position_turning_point = None
-        # self.theta_turning_point = None
-
-        # self.position_parking = None
-
         self.is_navigation_finished = False
-
         self.is_tunnel_finished = False
 
         self.last_current_theta = 0.0
-
-        # rospy.sleep(1)
-
-
-        # self.fnPubGoalPose()
-
-        # loop_rate = rospy.Rate(10)
-        # while not rospy.is_shutdown():
-        #     self.fnPubGoalPose()
-
-        #     loop_rate.sleep()
 
     def cbGetNavigationResult(self, msg_nav_result):
         if msg_nav_result.status.status == 3:
@@ -130,52 +117,29 @@ class DetectTunnel():
         elif order.data == self.StepOfTunnel.exit.value:
             rospy.loginfo("Now exit")
 
-            # while True:
-            #     if self.is_obstacle_detected == False:
-            #         rospy.loginfo("parking lot is clear")
-            #         break
-            #     else:
-            #         rospy.loginfo("right side is full")
-
             pub_tunnel_return.data = self.StepOfTunnel.exit.value
 
         self.pub_tunnel_return.publish(pub_tunnel_return)
 
     def cbOdom(self, odom_msg):
-		#  (self.now_roll, self.now_pitch, self.now_yaw) = tf.transformations.euler_from_quaternion([odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w])
         quaternion = (odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w)
         self.current_theta = self.euler_from_quaternion(quaternion)
 
-        # rospy.loginfo("Got current theta : %f", self.current_theta)
-
         if (self.current_theta - self.last_current_theta) < -math.pi:
-            # rospy.loginfo("subtract current theta : %f", self.current_theta - self.last_current_theta)
-            # rospy.loginfo("it is gone to minus")
             self.current_theta = 2. * math.pi + self.current_theta
             self.last_current_theta = math.pi
         elif (self.current_theta - self.last_current_theta) > math.pi:
-            # rospy.loginfo("subtract current theta : %f", self.current_theta - self.last_current_theta)
-            # rospy.loginfo("it is gone to plus")
             self.current_theta = -2. * math.pi + self.current_theta
             self.last_current_theta = -math.pi
         else:
             self.last_current_theta = self.current_theta
 
-        # rospy.loginfo("mod current theta : %f", self.current_theta)
-        # rospy.loginfo("last current theta : %f", self.last_current_theta)
-
         self.current_pos_x = odom_msg.pose.pose.position.x
         self.current_pos_y = odom_msg.pose.pose.position.y
-        # rospy.loginfo(self.)
 
     def euler_from_quaternion(self, quaternion):
         theta = tf.transformations.euler_from_quaternion(quaternion)[2]
-        # if theta < 0:
-        #     theta = theta + np.pi * 2
-        # if theta > np.pi * 2:
-        #     theta = theta - np.pi * 2
         return theta
-
 
     def fnPubGoalPose(self):
         goalPoseStamped = PoseStamped()
@@ -183,14 +147,14 @@ class DetectTunnel():
         goalPoseStamped.header.frame_id = "map"
         goalPoseStamped.header.stamp = rospy.Time.now()
 
-        goalPoseStamped.pose.position.x = 1.50108861923#1.49971497059 
-        goalPoseStamped.pose.position.y = 1.36013686657#1.46927690506
+        goalPoseStamped.pose.position.x = 1.50108861923
+        goalPoseStamped.pose.position.y = 1.36013686657
         goalPoseStamped.pose.position.z = 0.0
 
         goalPoseStamped.pose.orientation.x = 0.0
         goalPoseStamped.pose.orientation.y = 0.0
-        goalPoseStamped.pose.orientation.z = 0.707669819124#0.701553189571
-        goalPoseStamped.pose.orientation.w = 0.70654329457#0.712617093679
+        goalPoseStamped.pose.orientation.z = 0.707669819124
+        goalPoseStamped.pose.orientation.w = 0.70654329457
 
         self.pub_goal_pose_stamped.publish(goalPoseStamped)
 
@@ -200,8 +164,8 @@ class DetectTunnel():
         rospy.loginfo("Tunnel_Straight")
         rospy.loginfo("err_pos  desired_dist : %f  %f  %f", err_pos, desired_dist, self.lastError)
 
-        Kp = 0.4#0.15
-        Kd = 0.05#0.07
+        Kp = 0.4
+        Kd = 0.05
 
         angular_z = Kp * err_pos + Kd * (err_pos - self.lastError)
         self.lastError = err_pos
@@ -214,8 +178,6 @@ class DetectTunnel():
         twist.angular.y = 0
         twist.angular.z = 0
         self.pub_cmd_vel.publish(twist)
-
-        # rospy.loginfo("angular_z : %f", angular_z)
 
         return err_pos
 

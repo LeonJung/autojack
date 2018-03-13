@@ -2,7 +2,7 @@
 <package>
   <name>turtlebot3_auto_detect</name>
   <version>1.0.0</version>
-  <description> the package that detects features with turtlebot3 auto</description>
+  <description> The package for feature detection with turtlebot3 auto</description>
 
   <maintainer email="rwjung@robotis.com">Leon Jung</maintainer>
 

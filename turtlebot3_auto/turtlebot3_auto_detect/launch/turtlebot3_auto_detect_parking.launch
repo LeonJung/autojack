@@ -11,6 +11,6 @@
     <remap from="/detect/image_input/compressed" to="/camera/image_projected_compensated/compressed" />
     <remap from="/detect/scan" to="/scan" />
     <remap from="/detect/image_output" to="/detect/image_parking" />
-    <remap from="/detect/image_output/compressed" to="/detect/image_parking/compressed" />  
+    <remap from="/detect/image_output/compressed" to="/detect/image_parking/compressed" />
   </node>
 </launch>

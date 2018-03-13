@@ -1,24 +1,38 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+################################################################################
+# Copyright 2018 ROBOTIS CO., LTD.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
+
+# Author: Ryu Woon Jung (Leon), [AuTURBO] Kihoon Kim (https://github.com/auturbo)
  
 import numpy as np
 import rospy
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import LaserScan
-from std_msgs.msg import UInt8, Float64, String
-from enum import Enum
+from std_msgs.msg import UInt8, Float64
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Image, CompressedImage
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
-from sensor_msgs.msg import Image, CompressedImage
+from enum import Enum
 import math
 import tf
 
 from dynamic_reconfigure.server import Server
 from turtlebot3_auto_detect.cfg import DetectLevelParamsConfig
-
-def callback(x):
-    pass
 
 def fnCalcDistanceDot2Line(a, b, c, x0, y0):
     distance = abs(x0*a + y0*b + c)/math.sqrt(a*a + b*b)
@@ -113,11 +127,9 @@ class DetectLevel():
                 self.pub_image_color_filtered = rospy.Publisher('/detect/image_output_sub1', Image, queue_size = 1)
 
         self.sub_level_crossing_order = rospy.Subscriber('/detect/level_crossing_order', UInt8, self.cbLevelCrossingOrder, queue_size=1)
-
         self.sub_level_crossing_finished = rospy.Subscriber('/control/level_crossing_finished', UInt8, self.cbLevelCrossingFinished, queue_size = 1)
 
         self.pub_level_crossing_return = rospy.Publisher('/detect/level_crossing_stamped', UInt8, queue_size=1)
-
         self.pub_parking_start = rospy.Publisher('/control/level_crossing_start', UInt8, queue_size = 1)
 
         self.pub_max_vel = rospy.Publisher('/control/max_vel', Float64, queue_size = 1)
@@ -204,7 +216,6 @@ class DetectLevel():
 
             pub_level_crossing_return.data = self.StepOfLevelCrossing.searching_level.value
 
-
         elif order.data == self.StepOfLevelCrossing.watching_level.value:
             rospy.loginfo("Now watching_level")
 
@@ -214,6 +225,7 @@ class DetectLevel():
                     break
                 else:
                     pass
+
             rospy.loginfo("STOP~~")
 
             msg_pub_max_vel = Float64()
@@ -221,7 +233,6 @@ class DetectLevel():
             self.pub_max_vel.publish(msg_pub_max_vel)
 
             pub_level_crossing_return.data = self.StepOfLevelCrossing.watching_level.value
-
 
         elif order.data == self.StepOfLevelCrossing.stop.value:
             rospy.loginfo("Now stop")

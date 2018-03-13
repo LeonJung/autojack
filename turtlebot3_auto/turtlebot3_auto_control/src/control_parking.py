@@ -16,21 +16,11 @@ def callback(x):
 
 class ControlParking():
     def __init__(self):
-        self.showing_images = "off" # you can choose showing images or not by "on", "off"
-        self.selecting_sub_image = "compressed" # you can choose image type "compressed", "raw"
-        self.selecting_pub_image = "compressed" # you can choose image type "compressed", "raw"
-
-        # self.sub_lane = rospy.Subscriber('/control/lane', Float64, self.callback, queue_size = 1)
-
         self.sub_parking_start = rospy.Subscriber('/control/parking_start', UInt8, self.cbParkingStart, queue_size = 1)
-
         self.sub_odom = rospy.Subscriber('/odom', Odometry, self.cbOdom, queue_size=1)
 
         self.pub_cmd_vel = rospy.Publisher('/control/cmd_vel', Twist, queue_size = 1)
-
         self.pub_parking_finished = rospy.Publisher('/control/parking_finished', UInt8, queue_size = 1)
-
-        self.lastError = 0
 
         self.StepOfParking = Enum('StepOfParking', 'idle outer_turn_first parking_lot_entry parking_lot_turn_first parking_lot_stop parking_lot_turn_second parking_lot_exit outer_turn_second')
         self.current_step_of_parking = self.StepOfParking.outer_turn_first.value
@@ -44,7 +34,6 @@ class ControlParking():
         
         self.lastError = 0.0
 
-
         loop_rate = rospy.Rate(10) # 10hz
         while not rospy.is_shutdown():
             if self.is_step_parking == True:
@@ -53,10 +42,6 @@ class ControlParking():
             loop_rate.sleep()
 
         rospy.on_shutdown(self.fnShutDown)
-
-    # def callback(self, desired_center):
-    #     if self.is_step_parking == False:
-    #         self.fnLaneFollow(desired_center)
 
     def cbParkingStart(self, parking_start_msg):
         self.is_step_parking = True
@@ -72,7 +57,6 @@ class ControlParking():
 
             error = self.fnTurn()
 
-            # rospy.loginfo("fnTurn error : %f ", error)
             if math.fabs(error) < 0.05:
                 rospy.loginfo("outer_turn_first finished")
                 self.current_step_of_parking = self.StepOfParking.parking_lot_entry.value
@@ -102,7 +86,6 @@ class ControlParking():
 
             error = self.fnTurn()
 
-            # rospy.loginfo("fnTurn error : %f ", error)
             if math.fabs(error) < 0.05:
                 rospy.loginfo("parking_lot_turn_first finished")
                 self.current_step_of_parking = self.StepOfParking.parking_lot_stop.value
@@ -126,7 +109,6 @@ class ControlParking():
 
             error = self.fnTurn()
 
-            # rospy.loginfo("fnTurn error : %f ", error)
             if math.fabs(error) < 0.05:
                 rospy.loginfo("parking_lot_turn_second finished")
                 self.current_step_of_parking = self.StepOfParking.parking_lot_exit.value
@@ -156,7 +138,6 @@ class ControlParking():
 
             error = self.fnTurn()
 
-            # rospy.loginfo("fnTurn error : %f ", error)
             if math.fabs(error) < 0.05:
                 rospy.loginfo("outer_turn_second finished")
                 self.current_step_of_parking = self.StepOfParking.idle.value
@@ -165,8 +146,6 @@ class ControlParking():
         else:
             rospy.loginfo("idle (if finished to go out from parking lot)")
 
-            # self.current_step_of_parking = self.StepOfParking.outer_turn_first.value
-
             self.fnStop()
 
             msg_parking_finished = UInt8()
@@ -174,43 +153,26 @@ class ControlParking():
             self.pub_parking_finished.publish(msg_parking_finished)
 
     def cbOdom(self, odom_msg):
-		#  (self.now_roll, self.now_pitch, self.now_yaw) = tf.transformations.euler_from_quaternion([odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w])
         quaternion = (odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w)
         self.current_theta = self.euler_from_quaternion(quaternion)
 
-        # rospy.loginfo("Got current theta : %f", self.current_theta)
-
         if (self.current_theta - self.last_current_theta) < -math.pi:
-            # rospy.loginfo("subtract current theta : %f", self.current_theta - self.last_current_theta)
-            # rospy.loginfo("it is gone to minus")
             self.current_theta = 2. * math.pi + self.current_theta
             self.last_current_theta = math.pi
         elif (self.current_theta - self.last_current_theta) > math.pi:
-            # rospy.loginfo("subtract current theta : %f", self.current_theta - self.last_current_theta)
-            # rospy.loginfo("it is gone to plus")
             self.current_theta = -2. * math.pi + self.current_theta
             self.last_current_theta = -math.pi
         else:
             self.last_current_theta = self.current_theta
 
-        # rospy.loginfo("mod current theta : %f", self.current_theta)
-        # rospy.loginfo("last current theta : %f", self.last_current_theta)
-
         self.current_pos_x = odom_msg.pose.pose.position.x
         self.current_pos_y = odom_msg.pose.pose.position.y
-        # rospy.loginfo(self.)
 
     def euler_from_quaternion(self, quaternion):
         theta = tf.transformations.euler_from_quaternion(quaternion)[2]
-        # if theta < 0:
-        #     theta = theta + np.pi * 2
-        # if theta > np.pi * 2:
-        #     theta = theta - np.pi * 2
         return theta
 
-
     def fnLaneFollow(self, desired_center):
-
         rospy.loginfo("Parking_Lane_following")
         center = desired_center.data
 
@@ -218,18 +180,11 @@ class ControlParking():
 
         MAX_VEL = 0.10
 
-        Kp = 0.0035#0.0035
-        Kd = 0.007#0.007
+        Kp = 0.0035
+        Kd = 0.007
 
         angular_z = Kp * error + Kd * (error - self.lastError)
         self.lastError = error
-
-        # print(center)
-
-        # print(error)
-        # print(self.lastError)
-        # print(angular_z)
-        # print((1 - error / 500))       
 
         twist = Twist()
         twist.linear.x = MAX_VEL * ((1 - abs(error) / 500) ** 2) 
@@ -245,9 +200,9 @@ class ControlParking():
         
         rospy.loginfo("Parking_Turn")
         rospy.loginfo("err_theta  desired_theta  current_theta : %f  %f  %f", err_theta, self.desired_theta, self.current_theta)
-        Kp = 0.8#0.15
+        Kp = 0.8
 
-        Kd = 0.03#0.07
+        Kd = 0.03
 
         angular_z = Kp * err_theta + Kd * (err_theta - self.lastError)
         self.lastError = err_theta
@@ -269,10 +224,9 @@ class ControlParking():
         err_pos = math.sqrt((self.current_pos_x - self.start_pos_x) ** 2 + (self.current_pos_y - self.start_pos_y) ** 2) - desired_dist
         
         rospy.loginfo("Parking_Straight")
-        # rospy.loginfo("err_pos  desired_pos  current_pos : %f  %f  %f", err_pos, self.desired_pos, self.current_pos)
 
-        Kp = 0.4#0.15
-        Kd = 0.05#0.07
+        Kp = 0.4
+        Kd = 0.05
 
         angular_z = Kp * err_pos + Kd * (err_pos - self.lastError)
         self.lastError = err_pos
@@ -285,8 +239,6 @@ class ControlParking():
         twist.angular.y = 0
         twist.angular.z = 0
         self.pub_cmd_vel.publish(twist)
-
-        # rospy.loginfo("angular_z : %f", angular_z)
 
         return err_pos
 
@@ -315,7 +267,6 @@ class ControlParking():
 
     def main(self):
         rospy.spin()
-
 
 
 if __name__ == '__main__':
