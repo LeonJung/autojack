@@ -396,6 +396,11 @@ $ roslaunch turtlebot3_autorace_camera turtlebot3_autorace_extrinsic_camera_cali
 $ export TURTLEBOT3_MODEL=burger
 $ roslaunch turtlebot3_autorace_core turtlebot3_autorace_core.launch
 ```
+- 8. [Remote PC] Open new terminal, then enter
+
+``` bash
+$ rostopic pub -1 /core/decided_mode std_msgs/UInt8 "data: 2" 
+```
 
 turtlebot3_autorace_core will control all system in the package (open and close the launch, nodes in the package.)
 

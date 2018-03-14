@@ -34,7 +34,7 @@ import sys
 class CoreNodeController():
     def __init__(self):
         self.ros_package_path = os.path.dirname(os.path.realpath(__file__))
-        self.ros_package_path = self.ros_package_path.replace('/turtlebot3_autorace_core/src', '')
+        self.ros_package_path = self.ros_package_path.replace('turtlebot3_autorace_core/src', '')
 
         self.sub_mode_control = rospy.Subscriber('/core/decided_mode', UInt8, self.cbReceiveMode, queue_size=1)
 
@@ -61,7 +61,7 @@ class CoreNodeController():
         self.current_step_level_crossing = self.StepOfLevelCrossing.searching_stop_sign.value
         self.current_step_tunnel = self.StepOfTunnel.searching_tunnel_sign.value
 
-        self.Launcher = Enum('Launcher', 'launch_camera launch_detect_sign launch_detect_lane launch_control_lane launch_detect_traffic_light launch_control_traffic_light launch_detect_parking launch_control_parking launch_detect_level launch_control_level launch_detect_tunnel launch_control_tunnel')
+        self.Launcher = Enum('Launcher', 'launch_camera_ex_calib launch_detect_sign launch_detect_lane launch_control_lane launch_detect_traffic_light launch_control_traffic_light launch_detect_parking launch_control_parking launch_detect_level launch_control_level launch_detect_tunnel launch_control_tunnel')
 
         self.uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
         
@@ -431,7 +431,7 @@ class CoreNodeController():
             if is_start == True:
                 if self.launch_camera_launched == False:
                     self.launch_camera = roslaunch.scriptapi.ROSLaunch()
-                    self.launch_camera = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_camera/launch/turtlebot3_autorace_camera_calibration.launch"])
+                    self.launch_camera = roslaunch.parent.ROSLaunchParent(self.uuid, [self.ros_package_path + "turtlebot3_autorace_camera/launch/turtlebot3_autorace_extrinsic_camera_calibration.launch"])
                     self.launch_camera_launched = True
                     self.launch_camera.start()
                 else:
