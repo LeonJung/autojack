@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>turtlebot3_autorace_detect</name>
+  <name>turtlebot3_autorace_control</name>
   <version>1.0.0</version>
-  <description> The package for feature detection with turtlebot3 auto</description>
+  <description> the package that controls turtlebot3 auto</description>
   <license>Apache License 2.0</license>
   <author email="rwjung@robotis.com">Leon RyuWoon Jung</author>
   <maintainer email="rwjung@robotis.com">Leon RyuWoon Jung</maintainer>
@@ -13,11 +13,9 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>dynamic_reconfigure</build_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
-  <run_depend>dynamic_reconfigure</run_depend>
   <export></export>
 </package>
 

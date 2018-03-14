@@ -1,8 +1,10 @@
 <?xml version="1.0"?>
 <package>
-  <name>turtlebot3_autorace_detect</name>
+  <name>turtlebot3_autorace_camera</name>
   <version>1.0.0</version>
-  <description> The package for feature detection with turtlebot3 auto</description>
+  <description>
+    TurtleBot3 Auto ROS package that controls Raspberry Pi Camera, and process the image
+  </description>
   <license>Apache License 2.0</license>
   <author email="rwjung@robotis.com">Leon RyuWoon Jung</author>
   <maintainer email="rwjung@robotis.com">Leon RyuWoon Jung</maintainer>
