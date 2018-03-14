@@ -1,13 +1,14 @@
 <?xml version="1.0"?>
 <package>
   <name>turtlebot3_auto_control</name>
-  <version>0.0.1</version>
+  <version>1.0.0</version>
   <description> the package that controls turtlebot3 auto</description>
-
-  <maintainer email="rwjung@robotis.com">Leon Jung</maintainer>
-
-  <license>Apache 2.0</license>
-
+  <license>Apache License 2.0</license>
+  <author email="rwjung@robotis.com">Leon RyuWoon Jung</author>
+  <maintainer email="rwjung@robotis.com">Leon RyuWoon Jung</maintainer>
+  <url type="bugtracker">https://github.com/ROBOTIS-GIT/turtlebot3_autorace/issues</url>
+  <url type="repository">https://github.com/ROBOTIS-GIT/turtlebot3_autorace</url>
+  <url type="website">http://emanual.robotis.com/docs/en/platform/turtlebot3/autonomous_driving/#autonomous-driving</url>
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>

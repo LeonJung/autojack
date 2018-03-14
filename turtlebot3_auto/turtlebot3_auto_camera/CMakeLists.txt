@@ -4,7 +4,6 @@ project(turtlebot3_auto_camera)
 set(OpenCV_DIR /usr/share/OpenCV/)
 
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
   rospy
   std_msgs
   dynamic_reconfigure

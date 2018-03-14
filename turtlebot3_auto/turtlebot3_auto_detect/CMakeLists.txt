@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(turtlebot3_auto_detect)
 
+set(OpenCV_DIR /usr/share/OpenCV/)
+
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
   rospy
   std_msgs
   dynamic_reconfigure
+  OpenCV
 )
-
-## Since OpenCV error occurred, I added this here (changed in 11.27.2017)
-find_package(OpenCV REQUIRED)
 
 catkin_python_setup()
 
